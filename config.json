@@ -1,0 +1,16 @@
+{
+  "port": 80,
+  "maxping": 300,
+  "repeat": 0.25,
+  "relayPin": 7,
+  "addresses": [
+    "8.8.8.8",
+    "8.8.4.4",
+    "4.2.2.2",
+    "4.2.2.1",
+    "youtube.com",
+    "github.com",
+    "facebook.com",
+    "yahoo.com"
+  ]
+}
