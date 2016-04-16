@@ -94,9 +94,9 @@ function countBadResults(items) {
       print(items[i].address + ' has ping greater then ' + maxPing);
     }
   }
-  // all pings failed & router should be rebooted
+  // all pings failed
   if (count === total) rebootRouter();
-  // more then half of the pings has high time
+  // half or more of the pings had high ping time
   if (highPings >= addresses.length / 2) rebootRouter();
   // all pings returned with good time
   if (!count && !highPings) print('all pings successful');
@@ -134,5 +134,6 @@ function start() {
 start();
 
 io.on('connection', socket => {
-  socket.on('thing', data => console.log(data));
+  // if (responses.length) emit('', responses);
+  // socket.on('thing', data => console.log(data));
 });
