@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  let appData;
+  let appData = {};
 
   /**
    * set the opacity of a give element to a give value
@@ -19,11 +19,11 @@
    * @param {HTMLElement} el
    */
   function fadeIn(el) {
-    var opacity = 0;
+    let opacity = 0;
     requestAnimationFrame(function step(timeStamp) {
       opacity += 0.05;
       if (opacity >= 1) {
-        var event = new CustomEvent('fade', {
+        let event = new CustomEvent('fade', {
           detail: {
             element: el,
             direction: 'in'
