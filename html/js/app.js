@@ -5,6 +5,7 @@
 
   /**
    * set the opacity of a give element to a give value
+   *
    * @param {Element} el = the element to edit opacity of
    * @param {Number} opacity = the value to set opacity to
    */
@@ -37,6 +38,11 @@
     });
   }
 
+  /**
+   * add new entrys top addData object
+   *
+   * @param {Object} entry
+   */
   function sortNewEntry(entry) {
     return new Promise(resolve => {
       for (let key in appData) {
@@ -48,6 +54,11 @@
     });
   }
 
+  /**
+   * sort the history object into appData object
+   *
+   * @param {array} history
+   */
   function sortHistory(history) {
     return new Promise(resolve => {
       let obj = {};
@@ -63,6 +74,11 @@
     });
   }
 
+  /**
+   * return a array of ping entry times
+   *
+   * @param {Array} array
+   */
   function returnTime(array) {
     let output = [];
     let len = array.length;
@@ -72,6 +88,11 @@
     return output;
   }
 
+  /**
+   * return a array of ping entry data
+   *
+   * @param {Array} array
+   */
   function returnData(array) {
     let output = [];
     let len = array.length;
@@ -87,6 +108,11 @@
     return output;
   }
 
+  /**
+   * render graphs of the input data
+   *
+   * @param {Object} data
+   */
   function graphData(data) {
     let card = document.querySelector('#card');
     let width = card.offsetWidth - 48;
@@ -132,6 +158,7 @@
     }
   }
 
+  // redraw graphs on window reload
   let timer = 0;
   window.onresize = () => {
     if (timer) {
@@ -143,6 +170,7 @@
     }, 100);
   };
 
+  // run the app
   window.onload = () => {
     // socket.io setup
     let socket = io.connect(location.origin);
@@ -152,7 +180,6 @@
       let card = document.querySelector('#card');
       fadeIn(card);
     }));
-
     socket.on('new', entry => sortNewEntry(entry).then(data => graphData(data)));
   };
 })();
