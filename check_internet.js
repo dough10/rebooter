@@ -25,7 +25,7 @@ let oneMin = 60000;
 let oneHour = oneMin * 60;
 
 // max ping time response
-let maxPing = config.maPing;
+let maxPing = config.maxPing;
 
 
 /**
