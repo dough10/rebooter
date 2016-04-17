@@ -1,3 +1,6 @@
 /node_modules/
 /data.db
 /restarts.db
+/html/build.html
+/html/js/app.js
+/html/js/app.js.map

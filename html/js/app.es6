@@ -1,7 +1,7 @@
-(function () {
+(() => {
   'use strict';
 
-  var appData = {};
+  let appData = {};
 
   /**
    * set the opacity of a give element to a give value
@@ -19,18 +19,18 @@
    * @param {HTMLElement} el
    */
   function fadeIn(el) {
-    var opacity = 0;
+    let opacity = 0;
     requestAnimationFrame(function step(timeStamp) {
       opacity += 0.05;
       if (opacity >= 1) {
-        var event = new CustomEvent('faded', {
+        let event = new CustomEvent('faded', {
           detail: {
             element: el,
             direction: 'in'
           }
         });
         el.dispatchEvent(event);
-        setOpacity(el, 1);
+        setOpacity(el, 1)
         return;
       }
       setOpacity(el, opacity);
@@ -44,9 +44,9 @@
    * @param {array} history
    */
   function sortHistory(history) {
-    return new Promise(function (resolve) {
-      var obj = {};
-      history.forEach(function (entry) {
+    return new Promise(resolve => {
+      let obj = {};
+      history.forEach(entry => {
         if (obj.hasOwnProperty(entry.address)) {
           obj[entry.address].push(entry);
         } else {
@@ -64,9 +64,9 @@
    * @param {Array} array
    */
   function returnTime(array) {
-    var output = [];
-    var len = array.length;
-    for (var i = 0; i < len; i++) {
+    let output = [];
+    let len = array.length;
+    for (let i = 0; i < len; i++) {
       output.push(new Date(array[i].time).toLocaleTimeString());
     }
     return output;
@@ -78,21 +78,16 @@
    * @param {Array} array
    */
   function returnData(array) {
-    var output = [];
-    var len = array.length;
-
-    var _loop = function (i) {
-      output.push(function () {
+    let output = [];
+    let len = array.length;
+    for (let i = 0; i < len; i++) {
+      output.push((() => {
         if (array[i].data) {
           return array[i].data.time;
         } else {
           return 0;
         }
-      }());
-    };
-
-    for (var i = 0; i < len; i++) {
-      _loop(i);
+      })());
     }
     return output;
   }
@@ -103,39 +98,41 @@
    * @param {Object} data
    */
   function graphData(data) {
-    var card = document.querySelector('#card');
-    var width = card.offsetWidth - 48;
-    for (var key in data) {
-      var id = 'el-' + key.replace(/\./g, '');
-      var exist = document.querySelector('#' + id);
+    let card = document.querySelector('#card');
+    let width = card.offsetWidth - 48;
+    for (let key in data) {
+      let id = 'el-' + key.replace(/\./g,'');
+      let exist = document.querySelector('#' + id);
       if (exist) card.removeChild(exist);
-      var div = document.createElement('div');
-      var text = document.createElement('h3');
+      let div = document.createElement('div');
+      let text = document.createElement('h3');
       div.id = id;
       div.style.opacity = 0;
       text.textContent = key;
       div.appendChild(text);
-      var canvas = document.createElement('canvas');
+      let canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = 200;
       div.appendChild(canvas);
       card.appendChild(div);
-      var r = Math.floor(Math.random() * 256);
-      var g = Math.floor(Math.random() * 256);
-      var b = Math.floor(Math.random() * 256);
-      var light = 'rgba(' + r + ',' + g + ',' + b + ', 0.1)';
-      var dark = 'rgba(' + r + ',' + g + ',' + b + ', 1)';
-      var chartData = {
+      let r = (Math.floor(Math.random() * 256));
+      let g = (Math.floor(Math.random() * 256));
+      let b = (Math.floor(Math.random() * 256));
+      let light = 'rgba(' + r + ',' + g + ',' + b + ', 0.1)';
+      let dark = 'rgba(' + r + ',' + g + ',' + b + ', 1)';
+      let chartData = {
         labels: returnTime(data[key]),
-        datasets: [{
-          label: key + " Ping",
-          fillColor: light,
-          strokeColor: dark,
-          data: returnData(data[key])
-        }]
+        datasets: [
+          {
+            label: key + " Ping",
+            fillColor: light,
+            strokeColor: dark,
+            data: returnData(data[key])
+          }
+        ]
       };
-      var ctx = canvas.getContext("2d");
-      var chart = new Chart(ctx).Line(chartData, {
+      let ctx = canvas.getContext("2d");
+      let chart = new Chart(ctx).Line(chartData, {
         animation: false,
         pointDot: false,
         showTooltips: true,
@@ -149,39 +146,34 @@
 
   function outputRestarts(logs) {
     if (logs.length) {
-      var last = document.querySelector('#lastRestart');
+      let last = document.querySelector('#lastRestart');
       last.textContent = new Date(logs[logs.length - 1].time).toLocaleString();
     }
   }
 
   // redraw graphs on window reload
-  var timer = 0;
-  window.onresize = function () {
+  let timer = 0;
+  window.onresize = () => {
     if (timer) {
       clearTimeout(timer);
       timer = 0;
     }
-    timer = setTimeout(function () {
+    timer = setTimeout(() => {
       graphData(appData);
       timer = 0;
     }, 100);
   };
 
   // run the app
-  window.onload = function () {
-    var card = document.querySelector('#card');
+  window.onload = () => {
+    let card = document.querySelector('#card');
     fadeIn(card);
     // socket.io setup
-    var socket = io.connect(location.origin);
-    socket.on('history', function (logs) {
-      return sortHistory(logs).then(function (data) {
-        appData = data;
-        graphData(data);
-      });
-    });
-    socket.on('restarts', function (logs) {
-      return outputRestarts(logs);
-    });
+    let socket = io.connect(location.origin);
+    socket.on('history', logs => sortHistory(logs).then(data => {
+      appData = data;
+      graphData(data);
+    }));
+    socket.on('restarts', logs => outputRestarts(logs));
   };
 })();
-//# sourceMappingURL=app.js.map
