@@ -23,7 +23,7 @@
     requestAnimationFrame(function step(timeStamp) {
       opacity += 0.05;
       if (opacity >= 1) {
-        let event = new CustomEvent('fade', {
+        let event = new CustomEvent('faded', {
           detail: {
             element: el,
             direction: 'in'
@@ -35,22 +35,6 @@
       }
       setOpacity(el, opacity);
       requestAnimationFrame(step);
-    });
-  }
-
-  /**
-   * add new entrys top addData object
-   *
-   * @param {Object} entry
-   */
-  function sortNewEntry(entry) {
-    return new Promise(resolve => {
-      for (let key in appData) {
-        if (appData[key] === entry.address) {
-          appData[key].push(entry);
-        }
-      }
-      resolve(appData);
     });
   }
 
@@ -121,8 +105,9 @@
       let exist = document.querySelector('#' + id);
       if (exist) card.removeChild(exist);
       let div = document.createElement('div');
-      let text = document.createElement('h4');
+      let text = document.createElement('h3');
       div.id = id;
+      div.style.opacity = 0;
       text.textContent = key;
       div.appendChild(text);
       let canvas = document.createElement('canvas');
@@ -133,13 +118,13 @@
       let r = (Math.floor(Math.random() * 256));
       let g = (Math.floor(Math.random() * 256));
       let b = (Math.floor(Math.random() * 256));
-      let light = 'rgba(' + r + ',' + g + ',' + b + ', 0.2)';
+      let light = 'rgba(' + r + ',' + g + ',' + b + ', 0.1)';
       let dark = 'rgba(' + r + ',' + g + ',' + b + ', 1)';
       let chartData = {
         labels: returnTime(data[key]),
         datasets: [
           {
-            label: "Ping Time",
+            label: key + " Ping",
             fillColor: light,
             strokeColor: dark,
             data: returnData(data[key])
@@ -155,6 +140,14 @@
         scaleFontFamily: "'Roboto', 'Noto', sans-serif",
         scaleFontSize: 10
       });
+      fadeIn(div);
+    }
+  }
+
+  function outputRestarts(logs) {
+    if (logs.length) {
+      let last = document.querySelector('#lastRestart');
+      last.textContent = new Date(logs[logs.length - 1].time).toLocaleString();
     }
   }
 
@@ -163,6 +156,7 @@
   window.onresize = () => {
     if (timer) {
       clearTimeout(timer);
+      timer = 0;
     }
     timer = setTimeout(() => {
       graphData(appData);
@@ -180,6 +174,6 @@
       let card = document.querySelector('#card');
       fadeIn(card);
     }));
-    socket.on('new', entry => sortNewEntry(entry).then(data => graphData(data)));
+    socket.on('restarts', logs => outputRestarts(logs));
   };
 })();

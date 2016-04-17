@@ -1,6 +1,7 @@
 body {
   background: #EDE7F6;
   font-family: 'Roboto', 'Noto', sans-serif;
+  font-size: 14px;
 }
 .wrapper {
   position: absolute;
@@ -28,7 +29,10 @@ body {
   margin-top: 50px;
   border-radius: 5px;
   opacity: 0;
-  margin-bottom: 50px;
+  margin-bottom: 75px;
+}
+#lastRestart {
+  font-size: 12px;
 }
 .shadowTop {
   position: absolute;

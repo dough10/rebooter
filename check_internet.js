@@ -14,6 +14,11 @@ let history = new Data({
   autoload: true
 });
 
+let restarts = new Data({
+  filename: './restarts.db',
+  autoload: true
+});
+
 // import addresses from json file
 let addresses = config.addresses;
 
@@ -72,14 +77,18 @@ function ping(url) {
 /**
  * reboot the router
  */
-function rebootRouter() {}
+function rebootRouter() {
+  restarts.insert({
+    time: new Date().getTime()
+  });
+}
 
 
 /**
  * count failed pings*
  * @param {Array} items - list of ping results
  */
-function countBadResults(items) {
+function countResults(items) {
   let count = 0;
   let total = items.length;
   let highPings = 0;
@@ -101,6 +110,26 @@ function countBadResults(items) {
   if (!count && !highPings) print('all pings successful');
   setTimeout(start, oneHour * config.repeat);
   console.timeEnd('all pings responded in');
+  pushHistory();
+}
+
+/**
+ * update history on client
+ */
+function pushHistory() {
+  let expected = config.graphLength * addresses.length;
+  history.count({}, (err, count) => {
+    let skip = (() => {
+      if (count > expected) {
+        return count - expected;
+      } else {
+        return 0;
+      }
+    })();
+    history.find({}).sort({
+      time: 1
+    }).skip(skip).limit(expected).exec((err, logs) => emit('history', logs));
+  });
 }
 
 
@@ -111,10 +140,9 @@ function countBadResults(items) {
  */
 function response(data) {
   data.time = new Date().getTime();
-  emit('new', data);
   history.insert(data);
   responses.push(data);
-  if (responses.length === addresses.length) countBadResults(responses);
+  if (responses.length === addresses.length) countResults(responses);
 }
 
 
@@ -135,15 +163,14 @@ function start() {
 start();
 
 io.on('connection', socket => {
-  history.count({}, (err, count) => {
-    history.find({}).sort({
-      time: 1
-    }).skip((() => {
-      if (count >= 60) {
-        return count - 60;
+  restarts.count({}, (err, count) => {
+    restarts.find().sort({time: 1}).skip((() => {
+      if (count > 10) {
+        return count - 10;
       } else {
         return 0;
       }
-    })()).exec((err, logs) => emit('history', logs));
+    })()).exec((err, logs) => emit('restarts', logs));
   });
+  pushHistory();
 });
