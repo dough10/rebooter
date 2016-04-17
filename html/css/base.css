@@ -1,0 +1,52 @@
+body {
+  background: #EDE7F6;
+  font-family: 'Roboto', 'Noto', sans-serif;
+}
+.wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding:16px;
+}
+#header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 128px;
+  background-color: #673AB7;
+}
+#card {
+  max-width: 800px;
+  padding: 24px;
+  background: #fff;
+  z-index: 1;
+  position: relative;
+  margin: auto;
+  margin-top: 50px;
+  border-radius: 5px;
+  opacity: 0;
+  margin-bottom: 50px;
+}
+.shadowTop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 17px 17px 0 rgba(0, 0, 0, 0.15);
+}
+.shadowBottom {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 27px 55px 0 rgba(0, 0, 0, 0.3);
+}

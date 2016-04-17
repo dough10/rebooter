@@ -1,32 +1,31 @@
-'strict mode';
-var config = require('./config.json');
-var express = require('express');
-var app = express();
+'use strict';
+let config = require('./config.json');
+let express = require('express');
+let app = express();
 app.use(express.static('html', {maxAge: 86400000}));
-var server = app.listen(config.port);
-var io = require('socket.io')(server);
-var Ping = require ("ping-wrapper");
+let server = app.listen(config.port);
+let io = require('socket.io')(server);
+let Ping = require ("ping-wrapper");
+let Data = require('nedb');
 Ping.configure();
 
+let history = new Data({
+  filename: './data.db',
+  autoload: true
+});
+
 // import addresses from json file
-var addresses = config.addresses;
+let addresses = config.addresses;
 
 // container for ping results
-var responses = [];
+let responses = [];
 
 // one minuite
-var oneMin = 60000;
-var oneHour = oneMin * 60;
+let oneMin = 60000;
+let oneHour = oneMin * 60;
 
 // max ping time response
-var maxPing = config.maPing;
-
-/**
- * attach a reset function to console object
- */
-console.reset = function () {
-  return process.stdout.write('\033c');
-}
+let maxPing = config.maPing;
 
 
 /**
@@ -53,7 +52,7 @@ function print (message) {
  */
 function ping(url) {
   return new Promise((resolve, reject) => {
-    var _ping = new Ping(url);
+    let _ping = new Ping(url);
     _ping.on('ping', data => {
       resolve({
         address: url,
@@ -81,10 +80,10 @@ function rebootRouter() {}
  * @param {Array} items - list of ping results
  */
 function countBadResults(items) {
-  var count = 0;
-  var total = items.length;
-  var highPings = 0;
-  for (var i = 0; i < total; i++) {
+  let count = 0;
+  let total = items.length;
+  let highPings = 0;
+  for (let i = 0; i < total; i++) {
     if (!items[i].data) {
       count++;
       print('ping failed for ' + items[i].address);
@@ -111,6 +110,9 @@ function countBadResults(items) {
  * @param {object} data - ping response data
  */
 function response(data) {
+  data.time = new Date().getTime();
+  emit('new', data);
+  history.insert(data);
   responses.push(data);
   if (responses.length === addresses.length) countBadResults(responses);
 }
@@ -120,7 +122,6 @@ function response(data) {
  * start the test
  */
 function start() {
-  console.reset();
   // clear responses array if it contains results
   if (responses.length) responses = [];
   // grab any new addresses from json file
@@ -134,6 +135,15 @@ function start() {
 start();
 
 io.on('connection', socket => {
-  // if (responses.length) emit('', responses);
-  // socket.on('thing', data => console.log(data));
+  history.count({}, (err, count) => {
+    history.find({}).sort({
+      time: 1
+    }).skip((() => {
+      if (count >= 60) {
+        return count - 60;
+      } else {
+        return 0;
+      }
+    })()).exec((err, logs) => emit('history', logs));
+  });
 });
