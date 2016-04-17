@@ -1,5 +1,5 @@
 {
-  "port": 80,
+  "port": 8080,
   "maxPing": 300,
   "repeat": 0.25,
   "relayPin": 7,

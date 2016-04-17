@@ -1,6 +1,8 @@
 (() => {
   'use strict';
 
+  let appData = {};
+
   /**
    * set the opacity of a give element to a give value
    *
@@ -169,6 +171,7 @@
     // socket.io setup
     let socket = io.connect(location.origin);
     socket.on('history', logs => sortHistory(logs).then(data => {
+      appData = data;
       graphData(data);
     }));
     socket.on('restarts', logs => outputRestarts(logs));
