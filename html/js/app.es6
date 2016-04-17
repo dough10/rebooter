@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-
+  // object to store application data
   let appData = {};
 
   /**
@@ -144,11 +144,49 @@
     }
   }
 
+  /**
+   * output restart history*
+   *
+   * @param {Array} logs
+   */
   function outputRestarts(logs) {
     if (logs.length) {
       let last = document.querySelector('#lastRestart');
       last.textContent = new Date(logs[logs.length - 1].time).toLocaleString();
     }
+  }
+
+  /**
+   * display a toast message
+   */
+  function showToast(text) {
+    let toast = document.querySelector('#toast');
+    toast.classList.remove('hidden');
+    toast.textContent = text;
+    setTimeout(hideToast, 2000);
+  }
+
+  /**
+   * hide the toast
+   */
+  function hideToast() {
+    let toast = document.querySelector('#toast');
+    toast.classList.add('hidden');
+    setTimeout(function() {
+      toast.textContent = '';
+    }, 250);
+  }
+
+  function positionDialog() {
+    let dialog = document.querySelector('#reboot-dialog');
+    let centerH = Math.floor((window.innerHeight - 48) / 2);
+    let centerW = Math.floor((window.innerWidth - 80) / 2);
+    let centerDH = Math.floor(dialog.offsetHeight / 2);
+    let centerDW = Math.floor(dialog.offsetWidth / 2);
+    let top = Math.floor(centerH - centerDH) + 'px';
+    let left = Math.floor(centerW - centerDW) + 'px';
+    dialog.style.top = top;
+    dialog.style.left = left;
   }
 
   // redraw graphs on window reload
@@ -162,18 +200,56 @@
       graphData(appData);
       timer = 0;
     }, 100);
+    positionDialog();
   };
 
   // run the app
   window.onload = () => {
+    positionDialog();
+    // fade card opacity
     let card = document.querySelector('#card');
     fadeIn(card);
+
     // socket.io setup
     let socket = io.connect(location.origin);
+    socket.on('connect', () => {
+      var led = document.querySelector('#statusIndicator');
+      if (led.classList.contains('offline')) {
+        led.classList.remove('offline');
+        led.classList.add('online');
+      }
+    });
+    socket.on('disconnect', () => {
+      var led = document.querySelector('#statusIndicator');
+      if (led.classList.contains('online')) {
+        led.classList.remove('online');
+        led.classList.add('offline');
+      }
+    });
     socket.on('history', logs => sortHistory(logs).then(data => {
       appData = data;
       graphData(data);
     }));
     socket.on('restarts', logs => outputRestarts(logs));
+    // open reboot dialog
+    let reboot = document.querySelector('#reboot');
+    reboot.addEventListener('click', () => {
+      let dialog = document.querySelector('#reboot-dialog');
+      if (!dialog.classList.contains('dialog-opened')) dialog.classList.add('dialog-opened');
+    });
+    // close reboot dialog
+    let rebootClose = document.querySelector('#reboot-dialog-close');
+    rebootClose.addEventListener('click', () => {
+      let dialog = document.querySelector('#reboot-dialog');
+      if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
+    });
+    // close reboot dialog and reboot
+    let rebootButton = document.querySelector('#reboot-dialog-reboot');
+    rebootButton.addEventListener('click', () => {
+      socket.emit('force-reboot');
+      showToast('Router rebooting...');
+      let dialog = document.querySelector('#reboot-dialog');
+      if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
+    });
   };
 })();

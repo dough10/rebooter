@@ -80,7 +80,7 @@ function ping(url) {
 function rebootRouter() {
   restarts.insert({
     time: new Date().getTime()
-  });
+  }, err => pushRestarts(err));
 }
 
 
@@ -111,6 +111,22 @@ function countResults(items) {
   setTimeout(start, oneHour * config.repeat);
   console.timeEnd('all pings responded in');
   pushHistory();
+}
+
+/**
+ * update restarts on client
+ */
+function pushRestarts(err) {
+  if (err) print(err);
+  restarts.count({}, (err, count) => {
+    restarts.find().sort({time: 1}).skip((() => {
+      if (count > 10) {
+        return count - 10;
+      } else {
+        return 0;
+      }
+    })()).exec((err, logs) => emit('restarts', logs));
+  });
 }
 
 /**
@@ -163,14 +179,7 @@ function start() {
 start();
 
 io.on('connection', socket => {
-  restarts.count({}, (err, count) => {
-    restarts.find().sort({time: 1}).skip((() => {
-      if (count > 10) {
-        return count - 10;
-      } else {
-        return 0;
-      }
-    })()).exec((err, logs) => emit('restarts', logs));
-  });
+  socket.on('force-reboot', () => rebootRouter());
+  pushRestarts();
   pushHistory();
 });
