@@ -183,8 +183,8 @@
 
   function positionDialog() {
     var dialog = document.querySelector('#reboot-dialog');
-    var centerH = Math.floor((window.innerHeight - 48) / 2);
-    var centerW = Math.floor((window.innerWidth - 80) / 2);
+    var centerH = Math.floor((window.innerHeight - 80) / 2);
+    var centerW = Math.floor((window.innerWidth - 112) / 2);
     var centerDH = Math.floor(dialog.offsetHeight / 2);
     var centerDW = Math.floor(dialog.offsetWidth / 2);
     var top = Math.floor(centerH - centerDH) + 'px';
