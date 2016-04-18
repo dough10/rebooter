@@ -2,7 +2,6 @@
 let config = require('./config.json');
 let express = require('express');
 let app = express();
-app.use(express.static('html', {maxAge: 86400000}));
 let server = app.listen(config.port);
 let io = require('socket.io')(server);
 let Ping = require ("ping-wrapper");
@@ -32,6 +31,37 @@ let oneHour = oneMin * 60;
 // max ping time response
 let maxPing = config.maxPing;
 
+
+app.use(express.static('html', {
+  maxAge: 86400000
+}));
+app.get('/log/:host/:skip/:limit', (req, res) => {
+  let host = req.params.host;
+  let skip = req.param.skip;
+  let limit = req.param.limit;
+  history.count({
+    address: host
+  }, (err, count) => {
+    console.log(count);
+    history.find({
+      address: host
+    }).sort({
+      time: 1
+    }).skip(skip).limit(limit).exec((err, logs) => res.send(    (() => {
+      if (err) {
+        return {
+          status: 500,
+          error: err
+        };
+      } else {
+        return {
+          status: 200,
+          history: logs
+        };
+      }
+    })()));
+  });
+});
 
 /**
  * send data to client
@@ -105,7 +135,7 @@ function countResults(items) {
   // all pings failed
   if (count === total) rebootRouter();
   // half or more of the pings had high ping time
-  if (highPings >= addresses.length / 2) rebootRouter();
+  if (highPings >= Math.floor(addresses.length / 2)) rebootRouter();
   // all pings returned with good time
   if (!count && !highPings) print('all pings successful');
   setTimeout(start, oneHour * config.repeat);
@@ -132,7 +162,8 @@ function pushRestarts(err) {
 /**
  * update history on client
  */
-function pushHistory() {
+function pushHistory(err) {
+  if (err) print(err);
   let expected = config.graphLength * addresses.length;
   history.count({}, (err, count) => {
     let skip = (() => {
