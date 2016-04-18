@@ -189,6 +189,22 @@
     dialog.style.left = left;
   }
 
+  function makeRipple(el, event) {
+    console.log(event)
+    let x = event.offsetX;
+    let y = event.offsetY;
+    let div = document.createElement('div');
+    div.classList.add('ripple-effect');
+    let size = el.offsetHeight;
+    div.style.height = size;
+    div.style.width = size;
+    div.style.top = y - (size / 2);
+    div.style.left = x - (size / 2);
+    div.style.background = 'red';
+    el.appendChild(div);
+    setTimeout(() => el.removeChild(div), 2000)
+  }
+
   // redraw graphs on window reload
   let timer = 0;
   window.onresize = () => {
@@ -209,8 +225,6 @@
     // fade card opacity
     let card = document.querySelector('#card');
     fadeIn(card);
-    TouchPoint.color = '#673AB7';
-    TouchPoint.size = 10;
     // socket.io setup
     let socket = io.connect(location.origin);
     socket.on('connect', () => {
@@ -234,22 +248,20 @@
     socket.on('restarts', logs => outputRestarts(logs));
     // open reboot dialog
     let reboot = document.querySelector('#reboot');
-    TouchPoint.init(reboot);
-    reboot.addEventListener('click', () => {
+    reboot.addEventListener('click', e => {
+      makeRipple(reboot, e);
       let dialog = document.querySelector('#reboot-dialog');
       if (!dialog.classList.contains('dialog-opened')) dialog.classList.add('dialog-opened');
     });
     // close reboot dialog
     let rebootClose = document.querySelector('#reboot-dialog-close');
-    TouchPoint.init(rebootClose);
-    rebootClose.addEventListener('click', () => {
+    rebootClose.addEventListener('click', e => {
       let dialog = document.querySelector('#reboot-dialog');
       if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
     });
     // close reboot dialog and reboot
     let rebootButton = document.querySelector('#reboot-dialog-reboot');
-    TouchPoint.init(rebootButton);
-    rebootButton.addEventListener('click', () => {
+    rebootButton.addEventListener('click', e => {
       socket.emit('force-reboot');
       showToast('Router rebooting...');
       let dialog = document.querySelector('#reboot-dialog');

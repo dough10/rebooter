@@ -17,8 +17,7 @@ module.exports = function(grunt) {
           'html/js/app.min.js': [
             'html/js/app.js',
             'html/js/Charts.min.js',
-            'html/js/io.js',
-            'html/js/touchpoint.min.js'
+            'html/js/io.js'
           ]
         }
       }
