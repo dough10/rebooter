@@ -213,7 +213,8 @@
     // fade card opacity
     var card = document.querySelector('#card');
     fadeIn(card);
-
+    TouchPoint.color = '#673AB7';
+    TouchPoint.size = 10;
     // socket.io setup
     var socket = io.connect(location.origin);
     socket.on('connect', function () {
@@ -241,18 +242,21 @@
     });
     // open reboot dialog
     var reboot = document.querySelector('#reboot');
+    TouchPoint.init(reboot);
     reboot.addEventListener('click', function () {
       var dialog = document.querySelector('#reboot-dialog');
       if (!dialog.classList.contains('dialog-opened')) dialog.classList.add('dialog-opened');
     });
     // close reboot dialog
     var rebootClose = document.querySelector('#reboot-dialog-close');
+    TouchPoint.init(rebootClose);
     rebootClose.addEventListener('click', function () {
       var dialog = document.querySelector('#reboot-dialog');
       if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
     });
     // close reboot dialog and reboot
     var rebootButton = document.querySelector('#reboot-dialog-reboot');
+    TouchPoint.init(rebootButton);
     rebootButton.addEventListener('click', function () {
       socket.emit('force-reboot');
       showToast('Router rebooting...');

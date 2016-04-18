@@ -209,7 +209,8 @@
     // fade card opacity
     let card = document.querySelector('#card');
     fadeIn(card);
-
+    TouchPoint.color = '#673AB7';
+    TouchPoint.size = 10;
     // socket.io setup
     let socket = io.connect(location.origin);
     socket.on('connect', () => {
@@ -233,18 +234,21 @@
     socket.on('restarts', logs => outputRestarts(logs));
     // open reboot dialog
     let reboot = document.querySelector('#reboot');
+    TouchPoint.init(reboot);
     reboot.addEventListener('click', () => {
       let dialog = document.querySelector('#reboot-dialog');
       if (!dialog.classList.contains('dialog-opened')) dialog.classList.add('dialog-opened');
     });
     // close reboot dialog
     let rebootClose = document.querySelector('#reboot-dialog-close');
+    TouchPoint.init(rebootClose);
     rebootClose.addEventListener('click', () => {
       let dialog = document.querySelector('#reboot-dialog');
       if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
     });
     // close reboot dialog and reboot
     let rebootButton = document.querySelector('#reboot-dialog-reboot');
+    TouchPoint.init(rebootButton);
     rebootButton.addEventListener('click', () => {
       socket.emit('force-reboot');
       showToast('Router rebooting...');

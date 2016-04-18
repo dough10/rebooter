@@ -33,6 +33,7 @@ body {
   border-radius: 3px;
   opacity: 0;
   margin-bottom: 75px;
+  will-change: opacity;
 }
 #lastRestart {
   font-size: 12px;
@@ -103,6 +104,7 @@ body {
   box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14),0 1px 5px 0 rgba(0,0,0,0.12),0 3px 1px -2px rgba(0,0,0,0.2);
   -webkit-user-select: none;
   user-select: none;
+  overflow: hidden;
 }
 #toast {
   background: #323232;
@@ -119,6 +121,7 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
   transition: opacity .25s ease-in-out;
   min-width: 200px;
+  will-change: opacity;
 }
 #dialog-wrapper {
   position: fixed;
@@ -142,8 +145,9 @@ body {
   color: #212121;
   margin: 24px 40px;
   background: #ffffff;
+  will-change: transform;
   transform: scale3d(0,0,0);
-  transition: transform .25s ease-in-out;
+  transition: transform .35s ease-in-out;
   box-shadow: 0 16px 24px 2px rgba(0,0,0,0.14),0 6px 30px 5px rgba(0,0,0,0.12),0 8px 10px -5px rgba(0,0,0,0.4);
 }
 .dialog-opened {
@@ -154,7 +158,7 @@ body {
 }
 #reboot-dialog-reboot {
   color: #fff;
-  background: red;
+  background: #673AB7;
 }
 .dialog-large {
   margin: 16px;
