@@ -189,20 +189,34 @@
     dialog.style.left = left;
   }
 
-  function makeRipple(el, event) {
-    console.log(event)
-    let x = event.offsetX;
-    let y = event.offsetY;
-    let div = document.createElement('div');
-    div.classList.add('ripple-effect');
-    let size = el.offsetHeight;
-    div.style.height = size;
-    div.style.width = size;
-    div.style.top = y - (size / 2);
-    div.style.left = x - (size / 2);
-    div.style.background = 'red';
-    el.appendChild(div);
-    setTimeout(() => el.removeChild(div), 2000)
+  function makeRipple(event) {
+    return new Promise(resolve => {
+      let el = event.target;
+      let x = event.x;
+      let y = event.y;
+      let div = document.createElement('div');
+      div.classList.add('ripple-effect');
+      let size = el.offsetHeight;
+      let halfSize = size / 2;
+//      div.style.height = size + 'px';
+//      div.style.width = size + 'px';
+//      div.style.top = (y - halfSize) + 'px';
+//      div.style.left = (x - halfSize) + 'px';
+      div.style.background = event.target.dataset.rippleColor;
+      el.appendChild(div);
+      setTimeout(() => el.removeChild(div), 2000);
+      resolve();
+    });
+  }
+
+  function openDialog() {
+    let dialog = document.querySelector('#reboot-dialog');
+    if (!dialog.classList.contains('dialog-opened')) dialog.classList.add('dialog-opened');
+  }
+
+  function closeDialog() {
+    let dialog = document.querySelector('#reboot-dialog');
+    if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
   }
 
   // redraw graphs on window reload
@@ -246,26 +260,18 @@
       graphData(data);
     }));
     socket.on('restarts', logs => outputRestarts(logs));
+    socket.on('toast', message => showToast(message));
     // open reboot dialog
     let reboot = document.querySelector('#reboot');
-    reboot.addEventListener('click', e => {
-      makeRipple(reboot, e);
-      let dialog = document.querySelector('#reboot-dialog');
-      if (!dialog.classList.contains('dialog-opened')) dialog.classList.add('dialog-opened');
-    });
+    reboot.addEventListener('click', e => makeRipple(e).then(openDialog));
     // close reboot dialog
     let rebootClose = document.querySelector('#reboot-dialog-close');
-    rebootClose.addEventListener('click', e => {
-      let dialog = document.querySelector('#reboot-dialog');
-      if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
-    });
+    rebootClose.addEventListener('click', e => makeRipple(e).then(closeDialog));
     // close reboot dialog and reboot
     let rebootButton = document.querySelector('#reboot-dialog-reboot');
     rebootButton.addEventListener('click', e => {
       socket.emit('force-reboot');
-      showToast('Router rebooting...');
-      let dialog = document.querySelector('#reboot-dialog');
-      if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
+      makeRipple(e).then(closeDialog);
     });
   };
 })();

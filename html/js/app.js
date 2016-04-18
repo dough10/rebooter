@@ -193,6 +193,38 @@
     dialog.style.left = left;
   }
 
+  function makeRipple(event) {
+    return new Promise(function (resolve) {
+      var el = event.target;
+      var x = event.x;
+      var y = event.y;
+      var div = document.createElement('div');
+      div.classList.add('ripple-effect');
+      var size = el.offsetHeight;
+      var halfSize = size / 2;
+      //      div.style.height = size + 'px';
+      //      div.style.width = size + 'px';
+      //      div.style.top = (y - halfSize) + 'px';
+      //      div.style.left = (x - halfSize) + 'px';
+      div.style.background = event.target.dataset.rippleColor;
+      el.appendChild(div);
+      setTimeout(function () {
+        return el.removeChild(div);
+      }, 2000);
+      resolve();
+    });
+  }
+
+  function openDialog() {
+    var dialog = document.querySelector('#reboot-dialog');
+    if (!dialog.classList.contains('dialog-opened')) dialog.classList.add('dialog-opened');
+  }
+
+  function closeDialog() {
+    var dialog = document.querySelector('#reboot-dialog');
+    if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
+  }
+
   // redraw graphs on window reload
   var timer = 0;
   window.onresize = function () {
@@ -213,8 +245,6 @@
     // fade card opacity
     var card = document.querySelector('#card');
     fadeIn(card);
-    TouchPoint.color = '#673AB7';
-    TouchPoint.size = 10;
     // socket.io setup
     var socket = io.connect(location.origin);
     socket.on('connect', function () {
@@ -240,28 +270,24 @@
     socket.on('restarts', function (logs) {
       return outputRestarts(logs);
     });
+    socket.on('toast', function (message) {
+      return showToast(message);
+    });
     // open reboot dialog
     var reboot = document.querySelector('#reboot');
-    TouchPoint.init(reboot);
-    reboot.addEventListener('click', function () {
-      var dialog = document.querySelector('#reboot-dialog');
-      if (!dialog.classList.contains('dialog-opened')) dialog.classList.add('dialog-opened');
+    reboot.addEventListener('click', function (e) {
+      return makeRipple(e).then(openDialog);
     });
     // close reboot dialog
     var rebootClose = document.querySelector('#reboot-dialog-close');
-    TouchPoint.init(rebootClose);
-    rebootClose.addEventListener('click', function () {
-      var dialog = document.querySelector('#reboot-dialog');
-      if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
+    rebootClose.addEventListener('click', function (e) {
+      return makeRipple(e).then(closeDialog);
     });
     // close reboot dialog and reboot
     var rebootButton = document.querySelector('#reboot-dialog-reboot');
-    TouchPoint.init(rebootButton);
-    rebootButton.addEventListener('click', function () {
+    rebootButton.addEventListener('click', function (e) {
       socket.emit('force-reboot');
-      showToast('Router rebooting...');
-      var dialog = document.querySelector('#reboot-dialog');
-      if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
+      makeRipple(e).then(closeDialog);
     });
   };
 })();

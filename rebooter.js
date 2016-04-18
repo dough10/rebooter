@@ -108,6 +108,7 @@ function ping(url) {
  * reboot the router
  */
 function rebootRouter() {
+  emit('toast', 'Rebooting router...');
   restarts.insert({
     time: new Date().getTime()
   }, err => pushRestarts(err));
