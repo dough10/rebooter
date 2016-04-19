@@ -6,7 +6,10 @@ let server = app.listen(config.port);
 let io = require('socket.io')(server);
 let Ping = require ("ping-wrapper");
 let Data = require('nedb');
+let compression = require('compression');
 Ping.configure();
+
+
 
 let history = new Data({
   filename: './data.db',
@@ -191,6 +194,8 @@ io.on('connection', socket => {
   pushRestarts();
   pushHistory();
 });
+
+app.use(compression());
 
 app.use(express.static('html', {
   maxAge: 86400000

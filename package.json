@@ -9,6 +9,7 @@
   "author": "dough10",
   "license": "MIT",
   "dependencies": {
+    "compression": "^1.6.1",
     "express": "^4.13.4",
     "nedb": "^1.8.0",
     "ping-wrapper": "0.0.3",
