@@ -2,6 +2,40 @@
   'use strict';
   // object to store application data
   let appData = {};
+ 
+
+  /**
+   * return readable time sence a given date
+   *
+   * @param {String} time - date or time the entry was made
+   */
+  function ago(time){
+    if (time) {
+      var date = new Date(time);
+      var seconds = Math.floor((new Date() - date) / 1000);
+      var interval = Math.floor(seconds / 31536000);
+      if (interval > 1) {
+        return interval + " years ago";
+      }
+      interval = Math.floor(seconds / 2592000);
+      if (interval > 1) {
+        return interval + " months ago";
+      }
+      interval = Math.floor(seconds / 86400);
+      if (interval > 1) {
+        return interval + " days ago";
+      }
+      interval = Math.floor(seconds / 3600);
+      if (interval > 1) {
+        return interval + " hours ago";
+      }
+      interval = Math.floor(seconds / 60);
+      if (interval > 1) {
+        return interval + " minutes ago";
+      }
+      return Math.floor(seconds) + " seconds ago";
+    }
+  }
 
   /**
    * set the opacity of a give element to a give value
@@ -149,10 +183,12 @@
    *
    * @param {Array} logs
    */
+  let lastRebootTimer  = 0;
   function outputRestarts(logs) {
+    lastRebootTimer = setTimeout(() => outputRestarts(logs), 1000);
     if (logs.length) {
       let last = document.querySelector('#lastRestart');
-      last.textContent = new Date(logs[logs.length - 1].time).toLocaleString();
+      last.textContent = ago(logs[logs.length - 1].time);
     }
   }
 
@@ -177,6 +213,9 @@
     }, 250);
   }
 
+  /**
+   * position placement of restart dialog
+   */
   function positionDialog() {
     let dialog = document.querySelector('#reboot-dialog');
     let centerH = Math.floor((window.innerHeight - 48) / 2);
@@ -189,6 +228,9 @@
     dialog.style.left = left;
   }
 
+  /**
+   * attach a ripple to a clicked element
+   */
   function makeRipple(event) {
     return new Promise(resolve => {
       let el = event.target;
@@ -208,6 +250,9 @@
     });
   }
 
+  /**
+   * open the reboot dialog
+   */
   function openRebootDialog() {
     return new Promise(resolve => {
       let dialog = document.querySelector('#reboot-dialog');
@@ -216,13 +261,17 @@
     });
   }
 
-  function closeRebootDialog() {
+  /**
+   * close the reboot dialog
+   */
+   function closeRebootDialog() {
     return new Promise(resolve => {
       let dialog = document.querySelector('#reboot-dialog');
       if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
       resolve();
     });
   }
+
 
   // redraw graphs on window reload
   let timer = 0;
@@ -267,7 +316,10 @@
     }));
     socket.on('count', count => console.log(count));
     socket.on('log', log => console.log(log));
-    socket.on('restarts', logs => outputRestarts(logs));
+    socket.on('restarts', logs => {
+      if (lastRebootTimer) clearTimeout(lastRebootTimer);
+      outputRestarts(logs)
+    });
     socket.on('toast', message => showToast(message));
     // open reboot dialog
     let reboot = document.querySelector('#reboot');
