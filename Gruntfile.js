@@ -7,15 +7,15 @@ module.exports = function(grunt) {
           recursive: true
         },
         files: {
-          'html/build.html':'html/src.html'
+          'html/rebooter-client.html':'html/src.html'
         }
       }
     },
     uglify: {
       build: {
         files: {
-          'html/js/app.min.js': [
-            'html/js/app.js',
+          'html/js/rebooter-client.min.js': [
+            'html/js/rebooter-client.js',
             'html/js/Charts.min.js',
             'html/js/io.js'
           ]
@@ -32,7 +32,7 @@ module.exports = function(grunt) {
       },
       build: {
         files: {
-          "html/js/app.js": "html/js/app.es6"
+          "html/js/rebooter-client.js": "html/js/rebooter-client.es6"
         }
       }
     },
@@ -43,7 +43,7 @@ module.exports = function(grunt) {
       },
       build: {
         files: {
-          'html/css/app.min.css': [
+          'html/css/rebooter-client.min.css': [
             'html/css/base.css'
           ]
         }
@@ -56,7 +56,7 @@ module.exports = function(grunt) {
           collapseWhitespace: true
         },
         files: {
-          'html/index.html': 'html/build.html',
+          'html/index.html': 'html/rebooter-client.html',
         }
       }
     }

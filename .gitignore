@@ -1,6 +1,6 @@
 /node_modules/
 /data.db
 /restarts.db
-/html/build.html
-/html/js/app.js
-/html/js/app.js.map
+/html/rebooter-client.html
+/html/js/rebooter-client.js
+/html/js/rebooter-client.js.map

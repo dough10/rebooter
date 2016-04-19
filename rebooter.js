@@ -32,36 +32,13 @@ let oneHour = oneMin * 60;
 let maxPing = config.maxPing;
 
 
-app.use(express.static('html', {
-  maxAge: 86400000
-}));
-app.get('/log/:host/:skip/:limit', (req, res) => {
-  let host = req.params.host;
-  let skip = req.param.skip;
-  let limit = req.param.limit;
-  history.count({
-    address: host
-  }, (err, count) => {
-    console.log(count);
-    history.find({
-      address: host
-    }).sort({
-      time: 1
-    }).skip(skip).limit(limit).exec((err, logs) => res.send(    (() => {
-      if (err) {
-        return {
-          status: 500,
-          error: err
-        };
-      } else {
-        return {
-          status: 200,
-          history: logs
-        };
-      }
-    })()));
-  });
-});
+function isValidHost(host) {
+  for (let i = 0; i < addresses.length; i++) {
+    if (host === addresses[i]) return true;
+  }
+  return false;
+}
+
 
 /**
  * send data to client
@@ -208,10 +185,53 @@ function start() {
   addresses.forEach(address => ping(address).then(response, response));
 }
 
-start();
 
 io.on('connection', socket => {
   socket.on('force-reboot', () => rebootRouter());
   pushRestarts();
   pushHistory();
 });
+
+app.use(express.static('html', {
+  maxAge: 86400000
+}));
+
+
+app.get('/log/:host/:skip/:limit', (req, res) => {
+  let host = req.params.host;
+  let skip = parseInt(req.param.skip, 10);
+  let limit = parseInt(req.param.limit, 10);
+  if (!isValidHost(host)) {
+    res.send({
+      status: 401,
+      error: 'invalid host'
+    });
+    return;
+  }
+  history.count({
+    address: host
+  }, (err, count) => {
+    console.log(count);
+    history.find({
+      address: host
+    }).sort({
+      time: 1
+    }).skip(skip).limit(limit).exec((err, logs) => {
+      if (err) {
+        res.status(500).send({
+          status: 500,
+          error: err
+        });
+      } else {
+        res.send({
+          status: 200,
+          history: logs
+        })
+      }
+    });
+  });
+});
+
+
+
+start();
