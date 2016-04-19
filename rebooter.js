@@ -31,10 +31,12 @@ let responses = [];
 let oneMin = 60000;
 let oneHour = oneMin * 60;
 
-// max ping time response
-let maxPing = config.maxPing;
 
-
+/**
+ * check if given addres is valid
+ *
+ * @param {String} host - ip / url address
+ */
 function isValidHost(host) {
   for (let i = 0; i < addresses.length; i++) {
     if (host === addresses[i]) return true;
@@ -45,6 +47,9 @@ function isValidHost(host) {
 
 /**
  * send data to client
+ *
+ * @param {String} name - 
+ * @param {???} data - any data type can be sent
  */
 function emit(name, data) {
   io.emit(name, data);
@@ -53,6 +58,7 @@ function emit(name, data) {
 
 /**
  * output to console
+ *
  * @param {string} message - message to display
  */
 function print (message) {
@@ -88,7 +94,7 @@ function ping(url) {
  * reboot the router
  */
 function rebootRouter() {
-  emit('toast', 'Rebooting router...');
+  emit('toast', 'rebooting router...');
   restarts.insert({
     time: new Date().getTime()
   }, err => pushRestarts(err));
@@ -96,7 +102,8 @@ function rebootRouter() {
 
 
 /**
- * count failed pings*
+ * count failed pings
+ *
  * @param {Array} items - list of ping results
  */
 function countResults(items) {
@@ -108,9 +115,9 @@ function countResults(items) {
       count++;
       print('ping failed for ' + items[i].address);
     }
-    if (items[i].data.hasOwnProperty('time') && items[i].data.time > maxPing) {
+    if (items[i].data.hasOwnProperty('time') && items[i].data.time > config.maxPing) {
       highPings++;
-      print(items[i].address + ' has ping greater then ' + maxPing);
+      print(items[i].address + ' has ping greater then ' + config.maxPing);
     }
   }
   // all pings failed
@@ -119,13 +126,14 @@ function countResults(items) {
   if (highPings >= Math.floor(addresses.length / 2)) rebootRouter();
   // all pings returned with good time
   if (!count && !highPings) print('all pings successful');
-  setTimeout(start, oneHour * config.repeat);
   console.timeEnd('all pings responded in');
   pushHistory();
 }
 
 /**
  * update restarts on client
+ *
+* @param {Error} err
  */
 function pushRestarts(err) {
   if (err) print(err);
@@ -142,6 +150,8 @@ function pushRestarts(err) {
 
 /**
  * update history on client
+ *
+ * @param {Error} err
  */
 function pushHistory(err) {
   if (err) print(err);
@@ -157,6 +167,68 @@ function pushHistory(err) {
     history.find({}).sort({
       time: 1
     }).skip(skip).limit(expected).exec((err, logs) => emit('history', logs));
+  });
+}
+
+function count(host) {
+  return new Promise(resolve => {
+    if (!isValidHost(host)) {
+      resolve({
+        status: 401,
+        host: host,
+        error: 'invalid host'
+      });
+      return;
+    }
+    history.count({
+      address: host
+    }, (err, count) => {
+      if (err) {
+        resolve({
+          status: 500,
+          host: host,
+          error: err
+        });
+        return;
+      }
+      resolve({
+        status: 200,
+        host: host,
+        count: count
+      });
+    });
+  });
+}
+
+function getLogs(host, skip, limit) {
+  return new Promise(resolve => {
+    if (!isValidHost(host)) {
+      resolve({
+        status: 401,
+        error: 'invalid host',
+        host: host
+      });
+      return;
+    }
+    history.find({
+      address: host
+    }).sort({
+      time: 1
+    }).skip(skip).limit(limit).exec((err, logs) => {
+      if (err) {
+        resolve({
+          status: 500,
+          error: err,
+          host: host
+        });
+        return;
+      } 
+      resolve({
+        status: 200,
+        history: logs,
+        host: host
+      })
+    });
   });
 }
 
@@ -178,6 +250,8 @@ function response(data) {
  * start the test
  */
 function start() {
+  // set the timer for next 
+  setTimeout(start, oneHour * config.repeat);
   // clear responses array if it contains results
   if (responses.length) responses = [];
   // grab any new addresses from json file
@@ -191,6 +265,8 @@ function start() {
 
 io.on('connection', socket => {
   socket.on('force-reboot', () => rebootRouter());
+  socket.on('count', host => count(host).then(count => emit('count', count)));
+  socket.on('log', obj => getLogs(obj.host, obj.skip, obj.limit).then(log => emit('log', log)));
   pushRestarts();
   pushHistory();
 });
@@ -201,42 +277,27 @@ app.use(express.static('html', {
   maxAge: 86400000
 }));
 
+app.get('/count/:host', (req, res) => {
+  let host = req.params.host;
+  if (!host) {
+    res.status(500).send({
+      status: 500,
+      host: host,
+      error: 'invalid host'
+    });
+    return;
+  }
+  count(host).then(count => res.status(count.status).send(count));
+});
+
 
 app.get('/log/:host/:skip/:limit', (req, res) => {
   let host = req.params.host;
   let skip = parseInt(req.param.skip, 10);
   let limit = parseInt(req.param.limit, 10);
-  if (!isValidHost(host)) {
-    res.send({
-      status: 401,
-      error: 'invalid host'
-    });
-    return;
-  }
-  history.count({
-    address: host
-  }, (err, count) => {
-    console.log(count);
-    history.find({
-      address: host
-    }).sort({
-      time: 1
-    }).skip(skip).limit(limit).exec((err, logs) => {
-      if (err) {
-        res.status(500).send({
-          status: 500,
-          error: err
-        });
-      } else {
-        res.send({
-          status: 200,
-          history: logs
-        })
-      }
-    });
-  });
+  getLogs(host, skip, limit).then(logs => res.status(logs.status).send(logs));
 });
 
 
-
+// start pinging
 start();

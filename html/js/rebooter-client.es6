@@ -163,7 +163,7 @@
     let toast = document.querySelector('#toast');
     toast.classList.remove('hidden');
     toast.textContent = text;
-    setTimeout(hideToast, 2000);
+    setTimeout(hideToast, 4000);
   }
 
   /**
@@ -179,8 +179,8 @@
 
   function positionDialog() {
     let dialog = document.querySelector('#reboot-dialog');
-    let centerH = Math.floor((window.innerHeight - 80) / 2);
-    let centerW = Math.floor((window.innerWidth - 112) / 2);
+    let centerH = Math.floor((window.innerHeight - 48) / 2);
+    let centerW = Math.floor((window.innerWidth - 80) / 2);
     let centerDH = Math.floor(dialog.offsetHeight / 2);
     let centerDW = Math.floor(dialog.offsetWidth / 2);
     let top = Math.floor(centerH - centerDH) + 'px';
@@ -196,6 +196,8 @@
       let y = event.layerY;
       let div = document.createElement('div');
       div.classList.add('ripple-effect');
+      div.style.height = el.offsetHeight + 'px';
+      div.style.width = el.offsetHeight + 'px';
       let size = div.offsetHeight / 2;
       div.style.top = (y - size) + 'px';
       div.style.left = (x - size) + 'px';
@@ -207,13 +209,19 @@
   }
 
   function openRebootDialog() {
-    let dialog = document.querySelector('#reboot-dialog');
-    if (!dialog.classList.contains('dialog-opened')) dialog.classList.add('dialog-opened');
+    return new Promise(resolve => {
+      let dialog = document.querySelector('#reboot-dialog');
+      if (!dialog.classList.contains('dialog-opened')) dialog.classList.add('dialog-opened');
+      resolve();
+    });
   }
 
   function closeRebootDialog() {
-    let dialog = document.querySelector('#reboot-dialog');
-    if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
+    return new Promise(resolve => {
+      let dialog = document.querySelector('#reboot-dialog');
+      if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
+      resolve();
+    });
   }
 
   // redraw graphs on window reload
@@ -235,6 +243,7 @@
     positionDialog();
     // fade card opacity
     let card = document.querySelector('#card');
+    showToast('Loading...');
     fadeIn(card);
     // socket.io setup
     let socket = io.connect(location.origin);
@@ -256,6 +265,8 @@
       appData = data;
       graphData(data);
     }));
+    socket.on('count', count => console.log(count));
+    socket.on('log', log => console.log(log));
     socket.on('restarts', logs => outputRestarts(logs));
     socket.on('toast', message => showToast(message));
     // open reboot dialog
@@ -266,9 +277,6 @@
     rebootClose.addEventListener('click', e => makeRipple(e).then(closeRebootDialog));
     // close reboot dialog and reboot
     let rebootButton = document.querySelector('#reboot-dialog-reboot');
-    rebootButton.addEventListener('click', e => {
-      socket.emit('force-reboot');
-      makeRipple(e).then(closeRebootDialog);
-    });
+    rebootButton.addEventListener('click', e => makeRipple(e).then(closeRebootDialog).then(socket.emit('force-reboot')));
   };
 })();
