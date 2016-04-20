@@ -3,7 +3,6 @@
   // object to store application data
   let appData = {};
 
-
   /**
    * return readable time sence a given date
    *
@@ -57,7 +56,7 @@
     let total = -Math.abs(wrapper.offsetWidth);
     let bar = document.querySelector('#rebootProgress');
     bar.style.willChange = 'transform';
-    let frameDistance = Math.abs((total / 35) / 60);
+    let frameDistance = Math.abs((total / 34.5) / 60);
     let progress = total;
     setProgress(bar, progress);
     requestAnimationFrame(function step() {
@@ -92,6 +91,33 @@
         });
         el.dispatchEvent(event);
         setOpacity(el, 1);
+        el.style.willChange = 'auto';
+        return;
+      }
+      setOpacity(el, opacity);
+      requestAnimationFrame(step);
+    });
+  }
+
+  /**
+   * fade out opacity of a given element
+   *
+   * @param {HTMLElement} el
+   */
+  function fadeOut(el) {
+    var opacity = 1;
+    el.style.willChange = 'opacity';
+    requestAnimationFrame(function step(timeStamp) {
+      opacity -= 0.05;
+      if (opacity <= 0) {
+        var event = new CustomEvent('fade', {
+          detail: {
+            element: el,
+            direction: 'out'
+          }
+        });
+        el.dispatchEvent(event);
+        setOpacity(el, 0);
         el.style.willChange = 'auto';
         return;
       }
@@ -175,6 +201,24 @@
     return Math.min.apply(Math, array);
   }
 
+  function scrollbarWidth() {
+    var outer = document.createElement("div");
+    //outer.style.visibility = "hidden";
+    outer.style.width = "100px";
+    outer.style.msOverflowStyle = "scrollbar"; // needed for WinJS apps
+    document.body.appendChild(outer);
+    var widthNoScroll = outer.offsetWidth;
+    outer.style.overflow = "scroll";
+    // add innerdiv
+    var inner = document.createElement("div");
+    inner.style.width = "100%";
+    outer.appendChild(inner);
+    var widthWithScroll = inner.offsetWidth;
+    // remove divs
+    outer.parentNode.removeChild(outer);
+    return widthNoScroll - widthWithScroll;
+  }
+
   /**
    * render graphs of the input data
    *
@@ -197,12 +241,13 @@
       let canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = 100;
-      //canvas.style.pointerEvents = 'none';
+      canvas.style.pointerEvents = 'none';
       canvasWrapper.classList.add('clickable');
       canvasWrapper.dataset.rippleColor = "#673AB7"
       canvasWrapper.appendChild(canvas);
       div.appendChild(canvasWrapper);
       card.appendChild(div);
+      let graphData = returnData(data[key]);
       let r = (Math.floor(Math.random() * 256));
       let g = (Math.floor(Math.random() * 256));
       let b = (Math.floor(Math.random() * 256));
@@ -215,7 +260,7 @@
             label: key + " Ping",
             fillColor: light,
             strokeColor: dark,
-            data: returnData(data[key])
+            data: graphData
           }
         ]
       };
@@ -229,6 +274,7 @@
         scaleFontSize: 10
       });
       fadeIn(div);
+      fadeOut(document.querySelector('#loader'));
       canvasWrapper.addEventListener('click', e => {
         let exist = document.querySelector('#chartDialog');
         let body = document.querySelector('body');
@@ -240,21 +286,20 @@
         label.textContent = key;
         dialog.appendChild(label);
         let detailedCanvas = document.createElement('canvas');
-        detailedCanvas.width = window.innerWidth - 120;
+        detailedCanvas.width = window.innerWidth - (80 + 32 + scrollbarWidth());
         detailedCanvas.height = 300;
         detailedCanvas.style.marginBottom = '16px';
         dialog.appendChild(detailedCanvas);
-        let centerH = Math.floor(window.innerHeight / 2);
-        let centerDH = Math.floor(450 / 2);
+        let centerH = Math.floor((window.innerHeight - 32) / 2);
+        let centerDH = Math.floor(500 / 2);
         dialog.style.top = Math.floor(centerH - centerDH) + 'px';
-        dialog.style.left = '-10px';
+        dialog.style.left = '0px';
         let highest = document.createElement('div');
-        let graphData = returnData(data[key]);
-        highest.textContent = 'Highest Ping: ' + highestPing(graphData);
+        highest.textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
         highest.style.marginBottom = '4px';
         dialog.appendChild(highest);
         let lowest = document.createElement('div');
-        lowest.textContent = 'Lowest Ping: ' + lowestPing(graphData);
+        lowest.textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
         dialog.appendChild(lowest);
         dialog.addEventListener('click', () => {
           dialog.classList.remove('dialog-opened');
@@ -300,34 +345,40 @@
    */
   let lastRebootTimer  = 0;
   function outputRestarts(logs) {
+    let last = document.querySelector('#lastRestart');
     lastRebootTimer = setTimeout(() => outputRestarts(logs), 1000);
     if (logs.length) {
-      let last = document.querySelector('#lastRestart');
       last.textContent = ago(logs[logs.length - 1].time);
+      return;
     }
+    last.textContent = 'never';
   }
 
   /**
    * display a toast message
    */
   function showToast(text) {
-    let toast = document.querySelector('#toast');
+    let toast = document.createElement('div');
+    toast.classList.add('toast');
+    toast.classList.add('hidden');
     toast.style.willChange = 'opacity';
-    toast.classList.remove('hidden');
     toast.textContent = text;
-    setTimeout(hideToast, 3000);
+    document.querySelector('body').appendChild(toast);
+    setTimeout(() => {
+      toast.classList.remove('hidden');
+      setTimeout(hideToast, 3000);
+    }, 300);
   }
 
   /**
    * hide the toast
    */
   function hideToast() {
-    let toast = document.querySelector('#toast');
+    let toast = document.querySelector('.toast');
     toast.classList.add('hidden');
     setTimeout(function() {
-      toast.textContent = '';
-      toast.style.willChange = 'auto';
-    }, 250);
+      document.querySelector('body').removeChild(toast);
+    }, 350);
   }
 
   /**
@@ -336,14 +387,23 @@
   function positionThings() {
     // reboot dialog
     let dialog = document.querySelector('#reboot-dialog');
-    let centerH = Math.floor((window.innerHeight - 48) / 2);
-    let centerW = Math.floor((window.innerWidth - 80) / 2);
-    let centerDH = Math.floor(dialog.offsetHeight / 2);
-    let centerDW = Math.floor(dialog.offsetWidth / 2);
+    let centerH = Math.floor((window.innerHeight - 32) / 2);
+    let centerW = Math.floor((window.innerWidth - 32) / 2);
+    let centerDH = Math.floor((dialog.offsetHeight + 24) / 2);
+    let centerDW = Math.floor((dialog.offsetWidth + 40) / 2);
     let top = Math.floor(centerH - centerDH) + 'px';
     let left = Math.floor(centerW - centerDW) + 'px';
     dialog.style.top = top;
     dialog.style.left = left;
+    // fab
+    let fab = document.querySelector('#fab');
+    let cardWidth = document.querySelector('#card').offsetWidth;
+    fab.style.right = (centerW - (cardWidth / 2)) + 20 + 'px';
+    // graph dialog
+    let graphDialog = document.querySelector('#chartDialog');
+    if (graphDialog) {
+
+    }
   }
 
   /**
@@ -444,10 +504,10 @@
     appWrapper.onscroll = e => {
       if (appWrapper.scrollTop < scrollPOS) fab.style.transform = 'translateY(80px)';
       if (appWrapper.scrollTop > scrollPOS) fab.style.transform = 'translateY(0px)';
+      if (appWrapper.scrollTop === 0) fab.style.transform = 'translateY(80px)';
       scrollPOS = appWrapper.scrollTop;
     };
 
-    showToast('Loading...');
     fadeIn(card);
     // socket.io setup
     let socket = io.connect(location.origin);
@@ -482,9 +542,9 @@
     });
     socket.on('toast', message => {
       if (message === 'rebooting router...') {
-        reboot.classList.remove('disabled-button');
         startProgress();
       }
+      if (message === 'powering on router...') reboot.classList.remove('disabled-button');
       showToast(message);
     });
     socket.on('router-status', status => {

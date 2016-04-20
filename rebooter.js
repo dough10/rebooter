@@ -98,9 +98,15 @@ function ping(url) {
  * reboot the router
  */
 function rebootRouter() {
+  // set up gpio
+
+  // turn on relay to disable the power
+
   emit('toast', 'rebooting router...');
   hasRebooted = true;
   setTimeout(() => {
+    // turn off relay to allow power to router
+
     restarts.insert({
       time: new Date().getTime()
     }, err => pushRestarts(err));
@@ -133,6 +139,7 @@ function countResults(items) {
     hasRebooted = false;
     print('all pings successful');
   }
+  if (count) emit('toast', count + ' pings failed last test');
   // all pings failed
   if (count === total && !hasRebooted) rebootRouter();
   // half or more of the pings had high ping time

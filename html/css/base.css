@@ -32,8 +32,8 @@ body {
   margin-top: 65px;
   border-radius: 3px;
   opacity: 0;
-  margin-bottom: 75px;
-  min-height: 700px;
+  margin-bottom: 25px;
+  min-height: 500px;
 }
 #lastRestart {
   font-size: 12px;
@@ -137,7 +137,7 @@ body {
       opacity: 0;
     }
 }
-#toast {
+.toast {
   background: #323232;
   padding: 16px;
   display: inline-block;
@@ -235,4 +235,19 @@ body {
 .clickable {
   cursor: pointer;
   overflow: hidden;
+  position: relative;
+}
+#loader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  justify-content: center;
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  z-index:5;
+  pointer-events: none;
 }
