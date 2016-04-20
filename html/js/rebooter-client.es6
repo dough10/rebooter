@@ -202,21 +202,29 @@
   }
 
   function scrollbarWidth() {
-    var outer = document.createElement("div");
-    //outer.style.visibility = "hidden";
-    outer.style.width = "100px";
-    outer.style.msOverflowStyle = "scrollbar"; // needed for WinJS apps
-    document.body.appendChild(outer);
-    var widthNoScroll = outer.offsetWidth;
-    outer.style.overflow = "scroll";
-    // add innerdiv
-    var inner = document.createElement("div");
+    var inner = document.createElement('p');
     inner.style.width = "100%";
-    outer.appendChild(inner);
-    var widthWithScroll = inner.offsetWidth;
-    // remove divs
-    outer.parentNode.removeChild(outer);
-    return widthNoScroll - widthWithScroll;
+    inner.style.height = "200px";
+
+    var outer = document.createElement('div');
+    outer.style.position = "absolute";
+    outer.style.top = "0px";
+    outer.style.left = "0px";
+    outer.style.visibility = "hidden";
+    outer.style.width = "200px";
+    outer.style.height = "150px";
+    outer.style.overflow = "hidden";
+    outer.appendChild (inner);
+
+    document.body.appendChild (outer);
+    var w1 = inner.offsetWidth;
+    outer.style.overflow = 'scroll';
+    var w2 = inner.offsetWidth;
+    if (w1 == w2) w2 = outer.clientWidth;
+
+    document.body.removeChild (outer);
+
+    return (w1 - w2);
   }
 
   /**
@@ -287,11 +295,11 @@
         dialog.appendChild(label);
         let detailedCanvas = document.createElement('canvas');
         detailedCanvas.width = window.innerWidth - (80 + 32 + scrollbarWidth());
-        detailedCanvas.height = 300;
+        detailedCanvas.height = 250;
         detailedCanvas.style.marginBottom = '16px';
         dialog.appendChild(detailedCanvas);
         let centerH = Math.floor((window.innerHeight - 32) / 2);
-        let centerDH = Math.floor(500 / 2);
+        let centerDH = Math.floor(450 / 2);
         dialog.style.top = Math.floor(centerH - centerDH) + 'px';
         dialog.style.left = '0px';
         let highest = document.createElement('div');
