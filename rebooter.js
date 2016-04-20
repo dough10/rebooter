@@ -7,9 +7,10 @@ let io = require('socket.io')(server);
 let Ping = require ("ping-wrapper");
 let Data = require('nedb');
 let compression = require('compression');
+let network = require('network');
 Ping.configure();
-
-
+let failedRouterPings = 0;
+let hasRebooted = false;
 
 let history = new Data({
   filename: './data.db',
@@ -48,7 +49,7 @@ function isValidHost(host) {
 /**
  * send data to client
  *
- * @param {String} name - 
+ * @param {String} name
  * @param {???} data - any data type can be sent
  */
 function emit(name, data) {
@@ -95,9 +96,13 @@ function ping(url) {
  */
 function rebootRouter() {
   emit('toast', 'rebooting router...');
-  restarts.insert({
-    time: new Date().getTime()
-  }, err => pushRestarts(err));
+  hasRebooted = true;
+  setTimeout(() => {
+    restarts.insert({
+      time: new Date().getTime()
+    }, err => pushRestarts(err));
+    emit('toast', 'powering on router...');
+  }, 35000);
 }
 
 
@@ -120,12 +125,15 @@ function countResults(items) {
       print(items[i].address + ' has ping greater then ' + config.maxPing);
     }
   }
-  // all pings failed
-  if (count === total) rebootRouter();
-  // half or more of the pings had high ping time
-  if (highPings >= Math.floor(addresses.length / 2)) rebootRouter();
   // all pings returned with good time
-  if (!count && !highPings) print('all pings successful');
+  if (!count && !highPings) {
+    hasRebooted = false;
+    print('all pings successful');
+  }
+  // all pings failed
+  if (count === total && !hasRebooted) rebootRouter();
+  // half or more of the pings had high ping time
+  if (highPings >= Math.floor(addresses.length / 2) && !hasRebooted) rebootRouter();
   console.timeEnd('all pings responded in');
   pushHistory();
 }
@@ -222,7 +230,7 @@ function getLogs(host, skip, limit) {
           host: host
         });
         return;
-      } 
+      }
       resolve({
         status: 200,
         history: logs,
@@ -231,6 +239,25 @@ function getLogs(host, skip, limit) {
     });
   });
 }
+
+
+
+function pingRouter(ip) {
+  setTimeout(() => {
+    pingRouter(ip);
+  }, 30000);
+  ping(ip).then(res => {
+    if (!res.data.hasOwnProperty('time')) {
+      failedRouterPings++;
+      if (failedRouterPings > 2) rebootRouter();
+      return;
+    }
+    failedRouterPings = 0;
+    emit('router-status', res);
+  });
+}
+
+
 
 
 /**
@@ -250,7 +277,7 @@ function response(data) {
  * start the test
  */
 function start() {
-  // set the timer for next 
+  // set the timer for next
   setTimeout(start, oneHour * config.repeat);
   // clear responses array if it contains results
   if (responses.length) responses = [];
@@ -269,6 +296,9 @@ io.on('connection', socket => {
   socket.on('log', obj => getLogs(obj.host, obj.skip, obj.limit).then(log => emit('log', log)));
   pushRestarts();
   pushHistory();
+  network.get_gateway_ip((err, ip) => ping(ip).then(res => {
+    emit('router-status', res);
+  }));
 });
 
 app.use(compression());
@@ -301,3 +331,4 @@ app.get('/log/:host/:skip/:limit', (req, res) => {
 
 // start pinging
 start();
+network.get_gateway_ip((err, ip) => pingRouter(ip));

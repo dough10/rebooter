@@ -12,11 +12,14 @@
     <link rel="stylesheet" href="css/base.css">
     <!-- /build -->
 
-    <!-- <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"> -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' type='text/css'>
     <title>Rebooter.js</title>
   </head>
   <body>
+    <div id="fab" data-ripple-color="#ffffff">
+      <i class="material-icons">arrow_upward</i>
+    </div>
     <div id="header"></div>
     <div class="wrapper">
       <div id="card">
@@ -32,11 +35,17 @@
             </div>
           </div>
         </div>
+        <div class="bar-wrapper">
+          <div id="rebootProgress" class="bar"></div>
+        </div>
         <div class="flex flex-vertical-center">
           <b>Last reboot:</b> <div id="lastRestart" class="flex flex-vertical-center">never</div>
         </div>
         <div class="flex flex-vertical-center">
           <b>Socket status:</b> <div id="statusIndicator" class="offline"></div>
+        </div>
+        <div class="flex flex-vertical-center">
+          <b>Router status:</b> <div id="routerStatus" class="offline"></div>
         </div>
       </div>
     </div>
