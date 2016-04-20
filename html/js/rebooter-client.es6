@@ -233,7 +233,6 @@
         let exist = document.querySelector('#chartDialog');
         let body = document.querySelector('body');
         if (exist) body.removeChild(exist);
-        let el = e.target;
         let dialog = document.createElement('div');
         dialog.id = 'chartDialog';
         dialog.classList.add('dialog');
@@ -248,7 +247,7 @@
         let centerH = Math.floor(window.innerHeight / 2);
         let centerDH = Math.floor(450 / 2);
         dialog.style.top = Math.floor(centerH - centerDH) + 'px';
-        dialog.style.left = '0px';
+        dialog.style.left = '-10px';
         let highest = document.createElement('div');
         let graphData = returnData(data[key]);
         highest.textContent = 'Highest Ping: ' + highestPing(graphData);

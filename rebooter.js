@@ -87,6 +87,9 @@ function ping(url) {
         data: false
       });
     });
+    setTimeout(() => {
+      _ping.stop();
+    }, 60000 * 2);
   });
 }
 
