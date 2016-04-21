@@ -3,7 +3,7 @@
   "maxPing": 300,
   "repeat": 0.25,
   "relayPin": 7,
-  "graphLength": 15,
+  "graphLength": 60,
   "addresses": [
     "8.8.8.8",
     "8.8.4.4",
