@@ -97,7 +97,7 @@ function ping(url) {
 /**
  * reboot the router
  */
-function rebootRouter() {
+function rebootRouter(type) {
   // set up gpio
 
   // turn on relay to disable the power
@@ -108,7 +108,8 @@ function rebootRouter() {
     // turn off relay to allow power to router
 
     restarts.insert({
-      time: new Date().getTime()
+      time: new Date().getTime(),
+      type: type
     }, err => pushRestarts(err));
     emit('toast', 'powering on router...');
   }, 35000);
@@ -139,11 +140,11 @@ function countResults(items) {
     hasRebooted = false;
     print('all pings successful');
   }
-  if (count) emit('toast', count + ' pings failed last test');
+  if (count) emit('toast', count + ' of ' + addresses.length + ' pings failed with ' + highPings + 'high pings');
   // all pings failed
-  if (count === total && !hasRebooted) rebootRouter();
+  if (count === total && !hasRebooted) rebootRouter('automated');
   // half or more of the pings had high ping time
-  if (highPings >= Math.floor(addresses.length / 2) && !hasRebooted) rebootRouter();
+  if (highPings >= Math.floor(addresses.length / 2) && !hasRebooted) rebootRouter('automated');
   console.timeEnd('all pings responded in');
   pushHistory();
 }
@@ -259,7 +260,7 @@ function pingRouter(ip) {
   ping(ip).then(res => {
     if (!res.data.hasOwnProperty('time')) {
       failedRouterPings++;
-      if (failedRouterPings > 2) rebootRouter();
+      if (failedRouterPings > 2) rebootRouter('automated');
       return;
     }
     failedRouterPings = 0;
@@ -301,7 +302,7 @@ function start() {
 
 
 io.on('connection', socket => {
-  socket.on('force-reboot', () => rebootRouter());
+  socket.on('force-reboot', () => rebootRouter('manual'));
   socket.on('count', host => count(host).then(count => emit('count', count)));
   socket.on('log', obj => getLogs(obj.host, obj.skip, obj.limit).then(log => emit('log', log)));
   pushRestarts();

@@ -210,6 +210,7 @@
     outer.style.position = "absolute";
     outer.style.top = "0px";
     outer.style.left = "0px";
+    
     outer.style.visibility = "hidden";
     outer.style.width = "200px";
     outer.style.height = "150px";
@@ -282,17 +283,38 @@
         scaleFontSize: 10
       });
       fadeIn(div);
-      fadeOut(document.querySelector('#loader'));
+      let loader = document.querySelector('#loader');
+      if (loader.style.opacity !== 0) fadeOut(loader);
       canvasWrapper.addEventListener('click', e => {
+        // check if a graph is already open
         let exist = document.querySelector('#chartDialog');
         let body = document.querySelector('body');
         if (exist) body.removeChild(exist);
+        // create a new dialog
         let dialog = document.createElement('div');
         dialog.id = 'chartDialog';
         dialog.classList.add('dialog');
+        // create the text header
+        let textHeader = document.createElement('div');
+        textHeader.classList.add('flex');
+        textHeader.classList.add('space-between');
+        dialog.appendChild(textHeader);
+        let left = document.createElement('div');
+        let right = document.createElement('div');
+        textHeader.appendChild(left);
+        textHeader.appendChild(right);
         let label = document.createElement('h2');
         label.textContent = key;
-        dialog.appendChild(label);
+        left.appendChild(label);
+        let highest = document.createElement('div');
+        highest.textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
+        highest.style.marginBottom = '4px';
+        right.appendChild(highest);
+        let lowest = document.createElement('div');
+        lowest.textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
+        lowest.style.marginBottom = '4px';
+        right.appendChild(lowest);
+        // create the canvas
         let detailedCanvas = document.createElement('canvas');
         detailedCanvas.width = window.innerWidth - (80 + 32 + scrollbarWidth());
         detailedCanvas.height = 250;
@@ -302,20 +324,15 @@
         let centerDH = Math.floor(450 / 2);
         dialog.style.top = Math.floor(centerH - centerDH) + 'px';
         dialog.style.left = '0px';
-        let highest = document.createElement('div');
-        highest.textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
-        highest.style.marginBottom = '4px';
-        dialog.appendChild(highest);
-        let lowest = document.createElement('div');
-        lowest.textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
-        dialog.appendChild(lowest);
         dialog.addEventListener('click', () => {
           dialog.classList.remove('dialog-opened');
           setTimeout(() => {
             body.removeChild(dialog);
           }, 400);
         });
+        // attach dialog to body
         body.appendChild(dialog);
+        // render the graph
         let detailedChartData = {
           labels: returnTime(data[key]),
           datasets: [
@@ -339,9 +356,10 @@
           scaleFontFamily: "'Roboto', 'Noto', sans-serif",
           scaleFontSize: 10
         });
+        // open the dialog
         setTimeout(() => {
           dialog.classList.add('dialog-opened');
-        }, 300);
+        }, 100);
       });
     }
   }
