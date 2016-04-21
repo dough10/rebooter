@@ -550,6 +550,7 @@
     });
     socket.on('toast', message => {
       if (message === 'rebooting router...') {
+        reboot.classList.add('disabled-button')
         startProgress();
       }
       if (message === 'powering on router...') reboot.classList.remove('disabled-button');
