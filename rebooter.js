@@ -1,5 +1,5 @@
 'use strict';
-let config = require('./config.json');
+let config = require(__dirname + '/config.json');
 let express = require('express');
 let app = express();
 let server = app.listen(config.port);
@@ -13,12 +13,12 @@ let failedRouterPings = 0;
 let hasRebooted = false;
 
 let history = new Data({
-  filename: './data.db',
+  filename: __dirname + '/data.db',
   autoload: true
 });
 
 let restarts = new Data({
-  filename: './restarts.db',
+  filename: __dirname + '/restarts.db',
   autoload: true
 });
 
@@ -292,7 +292,7 @@ function start() {
   // clear responses array if it contains results
   if (responses.length) responses = [];
   // grab any new addresses from json file
-  addresses = require('./config.json').addresses;
+  addresses = require(__dirname + '/config.json').addresses;
   print('running ping on ' + addresses.length + ' addresses');
   console.time('all pings responded in');
   // run ping on each address in the list
@@ -313,7 +313,7 @@ io.on('connection', socket => {
 
 app.use(compression());
 
-app.use(express.static('html', {
+app.use(express.static(__dirname + '/html', {
   maxAge: 86400000
 }));
 
