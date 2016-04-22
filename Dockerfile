@@ -1,5 +1,5 @@
 FROM nodesource/centos7:0.12.7 
-FROM node:4.0.0
+FROM node:argon
 RUN mkdir -p /usr/src/rebooter
 WORKDIR /usr/src/rebooter
 COPY . /usr/src/rebooter
