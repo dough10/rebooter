@@ -1,4 +1,4 @@
-FROM node:argon
+FROM node:4.0.0
 RUN mkdir -p /usr/src/rebooter
 WORKDIR /usr/src/rebooter
 COPY . /usr/src/rebooter
