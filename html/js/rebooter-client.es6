@@ -210,7 +210,7 @@
     outer.style.position = "absolute";
     outer.style.top = "0px";
     outer.style.left = "0px";
-    
+
     outer.style.visibility = "hidden";
     outer.style.width = "200px";
     outer.style.height = "150px";
@@ -296,24 +296,18 @@
         dialog.classList.add('dialog');
         // create the text header
         let textHeader = document.createElement('div');
-        textHeader.classList.add('flex');
-        textHeader.classList.add('space-between');
         dialog.appendChild(textHeader);
-        let left = document.createElement('div');
-        let right = document.createElement('div');
-        textHeader.appendChild(left);
-        textHeader.appendChild(right);
         let label = document.createElement('h2');
         label.textContent = key;
-        left.appendChild(label);
+        textHeader.appendChild(label);
         let highest = document.createElement('div');
         highest.textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
         highest.style.marginBottom = '4px';
-        right.appendChild(highest);
+        textHeader.appendChild(highest);
         let lowest = document.createElement('div');
         lowest.textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
         lowest.style.marginBottom = '4px';
-        right.appendChild(lowest);
+        textHeader.appendChild(lowest);
         // create the canvas
         let detailedCanvas = document.createElement('canvas');
         detailedCanvas.width = window.innerWidth - (80 + 32 + scrollbarWidth());
