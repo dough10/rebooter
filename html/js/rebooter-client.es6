@@ -3,6 +3,8 @@
   // object to store application data
   let appData = {};
 
+  let socket;
+
   /**
    * return readable time sence a given date
    *
@@ -31,6 +33,9 @@
       interval = Math.floor(seconds / 60);
       if (interval > 1) {
         return interval + " minutes ago";
+      }
+      if  (seconds < 10) {
+        return 'Just now';
       }
       return Math.floor(seconds) + " seconds ago";
     }
@@ -228,6 +233,7 @@
     return (w1 - w2);
   }
 
+
   /**
    * render graphs of the input data
    *
@@ -237,38 +243,43 @@
     let card = document.querySelector('#card');
     let width = card.offsetWidth - 48;
     for (let key in data) {
+      // check if a dialog already is opened
       let id = 'el-' + key.replace(/\./g,'');
       let exist = document.querySelector('#' + id);
       if (exist) card.removeChild(exist);
+      // create the new dialog
       let div = document.createElement('div');
-      let canvasWrapper = document.createElement('div');
       let text = document.createElement('h3');
       div.id = id;
       div.style.opacity = 0;
+      // set header text
       text.textContent = key;
       div.appendChild(text);
+      // create canvas
       let canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = 100;
       canvas.style.pointerEvents = 'none';
+      // create clickable area
+      let canvasWrapper = document.createElement('div');
       canvasWrapper.classList.add('clickable');
       canvasWrapper.dataset.rippleColor = "#673AB7"
       canvasWrapper.appendChild(canvas);
       div.appendChild(canvasWrapper);
+      // send graph to the DOM
       card.appendChild(div);
+      // generate graph data
       let graphData = returnData(data[key]);
       let r = (Math.floor(Math.random() * 256));
       let g = (Math.floor(Math.random() * 256));
       let b = (Math.floor(Math.random() * 256));
-      let light = 'rgba(' + r + ',' + g + ',' + b + ', 0.1)';
-      let dark = 'rgba(' + r + ',' + g + ',' + b + ', 1)';
       let chartData = {
         labels: returnBlankLabel(data[key]),
         datasets: [
           {
             label: key + " Ping",
-            fillColor: light,
-            strokeColor: dark,
+            fillColor: 'rgba(' + r + ',' + g + ',' + b + ', 0.1)',
+            strokeColor: 'rgba(' + r + ',' + g + ',' + b + ', 1)',
             data: graphData
           }
         ]
@@ -286,6 +297,11 @@
       let loader = document.querySelector('#loader');
       if (loader.style.opacity !== 0) fadeOut(loader);
       canvasWrapper.addEventListener('click', e => {
+        let totalDatapoints;
+        socket.emit('count', key);
+        socket.on('count', count => {
+          totalDatapoints = count.count;
+        });
         // check if a graph is already open
         let exist = document.querySelector('#chartDialog');
         let body = document.querySelector('body');
@@ -294,20 +310,46 @@
         let dialog = document.createElement('div');
         dialog.id = 'chartDialog';
         dialog.classList.add('dialog');
-        // create the text header
+        let spaceBetween = document.createElement('div');
+        dialog.appendChild(spaceBetween);
+        spaceBetween.classList.add('flex');
+        spaceBetween.classList.add('space-between');
+        // create the text container
         let textHeader = document.createElement('div');
-        dialog.appendChild(textHeader);
+        spaceBetween.appendChild(textHeader);
+        let right = document.createElement('div');
+        let close = document.createElement('div');
+        let closeIcon = document.createElement('i');
+        closeIcon.classList.add('material-icons');
+        closeIcon.style.color = 'red';
+        closeIcon.textContent = 'close';
+        close.classList.add('icon-button');
+        close.appendChild(closeIcon);
+        right.appendChild(close);
+        spaceBetween.appendChild(right);
+        // header text
         let label = document.createElement('h2');
         label.textContent = key;
         textHeader.appendChild(label);
+        // highest ping
         let highest = document.createElement('div');
         highest.textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
-        highest.style.marginBottom = '4px';
+        highest.classList.add('high-low-text');
         textHeader.appendChild(highest);
+        // lowest ping
         let lowest = document.createElement('div');
         lowest.textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
-        lowest.style.marginBottom = '4px';
+        lowest.classList.add('high-low-text');
         textHeader.appendChild(lowest);
+        // // previous button
+        // let previous = document.createElement('i');
+        // previous.classList.add('material-icons');
+        // previous.textContent = 'keyboard_backspace';
+        // previous.classList.add('icon-button');
+        // previous.addEventListener('click', e => {
+        //   socket.emit('count', key);
+        // });
+        // dialog.appendChild(previous);
         // create the canvas
         let detailedCanvas = document.createElement('canvas');
         detailedCanvas.width = window.innerWidth - (80 + 32 + scrollbarWidth());
@@ -318,28 +360,18 @@
         let centerDH = Math.floor(450 / 2);
         dialog.style.top = Math.floor(centerH - centerDH) + 'px';
         dialog.style.left = '0px';
-        dialog.addEventListener('click', () => {
+        close.addEventListener('click', e => makeRipple(e).then(() => {
           dialog.classList.remove('dialog-opened');
           setTimeout(() => {
             body.removeChild(dialog);
           }, 400);
-        });
+        }));
         // attach dialog to body
         body.appendChild(dialog);
         // render the graph
-        let detailedChartData = {
-          labels: returnTime(data[key]),
-          datasets: [
-            {
-              label: key + " Ping",
-              fillColor: light,
-              strokeColor: dark,
-              data: graphData
-            }
-          ]
-        };
+        chartData.labels = returnTime(data[key]);
         let detailedCTX = detailedCanvas.getContext("2d");
-        let chart = new Chart(detailedCTX).Line(detailedChartData, {
+        let chart = new Chart(detailedCTX).Line(chartData, {
           animation: false,
           pointDot: false,
           showTooltips: (() => {
@@ -511,7 +543,6 @@
   window.onload = () => {
     positionThings();
     // fade card opacity
-    let card = document.querySelector('#card');
     let reboot = document.querySelector('#reboot');
     let rebootClose = document.querySelector('#reboot-dialog-close');
     let rebootButton = document.querySelector('#reboot-dialog-reboot');
@@ -527,10 +558,8 @@
       if (appWrapper.scrollTop === 0) fab.style.transform = 'translateY(80px)';
       scrollPOS = appWrapper.scrollTop;
     };
-
-    fadeIn(card);
     // socket.io setup
-    let socket = io.connect(location.origin);
+    socket = io.connect(location.origin);
     socket.on('connect', () => {
       var led = document.querySelector('#statusIndicator');
       if (led.classList.contains('offline')) {
@@ -554,7 +583,11 @@
       appData = data;
       graphData(data);
     }));
-    socket.on('count', count => console.log(count));
+    socket.on('count', count => {
+      // if (count.count <= appData[count.host].length) {
+      //   document.querySelector('#previous').style.display = 'none';
+      // }
+    })
     socket.on('log', log => console.log(log));
     socket.on('restarts', logs => {
       if (lastRebootTimer) clearTimeout(lastRebootTimer);

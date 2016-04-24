@@ -89,7 +89,7 @@ function ping(url) {
     });
     setTimeout(() => {
       _ping.stop();
-    }, 60000 * 2);
+    }, 60000);
   });
 }
 
@@ -140,7 +140,7 @@ function countResults(items) {
     hasRebooted = false;
     print('all pings successful');
   }
-  if (count) emit('toast', count + ' of ' + addresses.length + ' pings failed with ' + highPings + 'high pings');
+  if (count) emit('toast', count + ' of ' + addresses.length + ' pings failed with ' + highPings + ' high pings');
   // all pings failed
   if (count === total && !hasRebooted) rebootRouter('automated');
   // half or more of the pings had high ping time
@@ -307,9 +307,7 @@ io.on('connection', socket => {
   socket.on('log', obj => getLogs(obj.host, obj.skip, obj.limit).then(log => emit('log', log)));
   pushRestarts();
   pushHistory();
-  network.get_gateway_ip((err, ip) => ping(ip).then(res => {
-    emit('router-status', res);
-  }));
+  network.get_gateway_ip((err, ip) => ping(ip).then(res => emit('router-status', res)));
 });
 
 app.use(compression());

@@ -31,9 +31,8 @@ body {
   margin: auto;
   margin-top: 65px;
   border-radius: 3px;
-  opacity: 0;
   margin-bottom: 25px;
-  min-height: 500px;
+  min-height: 400px;
 }
 #lastRestart {
   font-size: 12px;
@@ -137,6 +136,17 @@ body {
       opacity: 0;
     }
 }
+@keyframes loading-bar {
+  0% {
+    transform: translateX(-100%)
+  }
+  50% {
+    transform: translateX(100%)
+  }
+  100% {
+    transform: translateX(-100%)
+  }
+}
 .toast {
   background: #323232;
   padding: 16px;
@@ -201,6 +211,12 @@ body {
   overflow: hidden;
   display: none;
 }
+.load-bar {
+  height:5px;
+  width: 100%;
+  background: #673AB7;
+  animation: loading-bar 3s infinite;
+}
 .bar {
   height:5px;
   width: 100%;
@@ -250,4 +266,13 @@ body {
   font-size: 18px;
   z-index:5;
   pointer-events: none;
+}
+.icon-button {
+  cursor: pointer;
+  margin: 8px;
+  overflow: hidden;
+}
+.high-low-text {
+  font-size: 12px;
+  margin-bottom: 4px;
 }
