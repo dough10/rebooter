@@ -269,8 +269,9 @@ body {
 }
 .icon-button {
   cursor: pointer;
-  margin: 8px;
+  padding: 8px;
   overflow: hidden;
+  position: relative;
 }
 .high-low-text {
   font-size: 12px;

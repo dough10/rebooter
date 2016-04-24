@@ -323,8 +323,15 @@
         closeIcon.classList.add('material-icons');
         closeIcon.style.color = 'red';
         closeIcon.textContent = 'close';
+        closeIcon.dataset.rippleColor = 'red';
         close.classList.add('icon-button');
         close.appendChild(closeIcon);
+        close.addEventListener('click', e => makeRipple(e).then(() => {
+          dialog.classList.remove('dialog-opened');
+          setTimeout(() => {
+            body.removeChild(dialog);
+          }, 400);
+        }));
         right.appendChild(close);
         spaceBetween.appendChild(right);
         // header text
@@ -360,12 +367,6 @@
         let centerDH = Math.floor(450 / 2);
         dialog.style.top = Math.floor(centerH - centerDH) + 'px';
         dialog.style.left = '0px';
-        close.addEventListener('click', e => makeRipple(e).then(() => {
-          dialog.classList.remove('dialog-opened');
-          setTimeout(() => {
-            body.removeChild(dialog);
-          }, 400);
-        }));
         // attach dialog to body
         body.appendChild(dialog);
         // render the graph
@@ -454,7 +455,7 @@
     // graph dialog
     let graphDialog = document.querySelector('#chartDialog');
     if (graphDialog) {
-
+      console.log(graphDialog);
     }
   }
 
@@ -473,7 +474,7 @@
       let size = div.offsetHeight / 2;
       div.style.top = (y - size) + 'px';
       div.style.left = (x - size) + 'px';
-      div.style.background = event.target.dataset.rippleColor;
+      div.style.background = event.target.dataset.rippleColor || '#ffffff';
       el.appendChild(div);
       setTimeout(() => el.removeChild(div), 1500);
       resolve();
