@@ -322,16 +322,23 @@
         let closeIcon = document.createElement('i');
         closeIcon.classList.add('material-icons');
         closeIcon.style.color = 'red';
+        close.style.color = 'red';
         closeIcon.textContent = 'close';
-        closeIcon.dataset.rippleColor = 'red';
         close.classList.add('icon-button');
         close.appendChild(closeIcon);
-        close.addEventListener('click', e => makeRipple(e).then(() => {
+        close.addEventListener('click', e => {
           dialog.classList.remove('dialog-opened');
           setTimeout(() => {
             body.removeChild(dialog);
           }, 400);
-        }));
+        });
+        close.PaperRipple = new PaperRipple();
+        close.appendChild(close.PaperRipple.$);
+        close.PaperRipple.$.classList.add('paper-ripple--round');
+        close.PaperRipple.recenters = true;
+        close.PaperRipple.center = true;
+        close.addEventListener('mousedown', ev => close.PaperRipple.downAction(ev));
+        close.addEventListener('mouseup', ev => close.PaperRipple.upAction());
         right.appendChild(close);
         spaceBetween.appendChild(right);
         // header text
@@ -349,15 +356,15 @@
         lowest.classList.add('high-low-text');
         textHeader.appendChild(lowest);
         // // previous button
-        // let previous = document.createElement('i');
-        // previous.classList.add('material-icons');
-        // previous.textContent = 'keyboard_backspace';
-        // previous.classList.add('icon-button');
-        // previous.addEventListener('click', e => {
-        //   socket.emit('count', key);
-        // });
-        // dialog.appendChild(previous);
-        // create the canvas
+//         let previous = document.createElement('i');
+//         previous.classList.add('material-icons');
+//         previous.textContent = 'keyboard_backspace';
+//         previous.classList.add('icon-button');
+//         previous.addEventListener('click', e => {
+//           socket.emit('count', key);
+//         });
+//         dialog.appendChild(previous);
+//         create the canvas
         let detailedCanvas = document.createElement('canvas');
         detailedCanvas.width = window.innerWidth - (80 + 32 + scrollbarWidth());
         detailedCanvas.height = 250;
@@ -460,28 +467,6 @@
   }
 
   /**
-   * attach a ripple to a clicked element
-   */
-  function makeRipple(event) {
-    return new Promise(resolve => {
-      let el = event.target;
-      let x = event.layerX;
-      let y = event.layerY;
-      let div = document.createElement('div');
-      div.classList.add('ripple-effect');
-      div.style.height = el.offsetHeight + 'px';
-      div.style.width = el.offsetHeight + 'px';
-      let size = div.offsetHeight / 2;
-      div.style.top = (y - size) + 'px';
-      div.style.left = (x - size) + 'px';
-      div.style.background = event.target.dataset.rippleColor || '#ffffff';
-      el.appendChild(div);
-      setTimeout(() => el.removeChild(div), 1500);
-      resolve();
-    });
-  }
-
-  /**
    * open the reboot dialog
    */
   function openRebootDialog() {
@@ -515,7 +500,7 @@
     let appWrapper = document.querySelector('.wrapper');
     let pos = appWrapper.scrollTop;
     requestAnimationFrame(function step() {
-      pos -= 20;
+      pos -= 40;
       if (pos <= 0) {
         appWrapper.scrollTop = 0;
         return;
@@ -542,97 +527,113 @@
 
   // run the app
   window.onload = () => {
-    positionThings();
-    // fade card opacity
-    let reboot = document.querySelector('#reboot');
-    let rebootClose = document.querySelector('#reboot-dialog-close');
-    let rebootButton = document.querySelector('#reboot-dialog-reboot');
-    let appWrapper = document.querySelector('.wrapper');
-    let fab = document.querySelector('#fab');
+    setTimeout(() => {
+      let buttons  = document.querySelectorAll('.button');
+      [].slice.call(buttons).forEach(button => {
+        button.PaperRipple = new PaperRipple();
+        button.appendChild(button.PaperRipple.$);
+        button.addEventListener('mousedown', ev => button.PaperRipple.downAction(ev));
+        button.addEventListener('mouseup', e => button.PaperRipple.upAction());
+      });
+      positionThings();
+      // fade card opacity
+      let reboot = document.querySelector('#reboot');
+      let rebootClose = document.querySelector('#reboot-dialog-close');
+      let rebootButton = document.querySelector('#reboot-dialog-reboot');
+      let appWrapper = document.querySelector('.wrapper');
+      let fab = document.querySelector('#fab');
+      // setup ripple for action fab
+      fab.PaperRipple = new PaperRipple();
+      fab.appendChild(fab.PaperRipple.$);
+      fab.PaperRipple.$.classList.add('paper-ripple--round');
+      fab.PaperRipple.recenters = true;
+      fab.PaperRipple.center = true;
+      fab.addEventListener('mousedown', ev => fab.PaperRipple.downAction(ev));
+      fab.addEventListener('mouseup', ev => fab.PaperRipple.upAction());
+      fab.addEventListener('click', e => animateScrollUP(e));
 
-    fab.addEventListener('click', e => makeRipple(e).then(animateScrollUP));
-
-    let scrollPOS;
-    appWrapper.onscroll = e => {
-      if (appWrapper.scrollTop < scrollPOS) fab.style.transform = 'translateY(80px)';
-      if (appWrapper.scrollTop > scrollPOS) fab.style.transform = 'translateY(0px)';
-      if (appWrapper.scrollTop === 0) fab.style.transform = 'translateY(80px)';
-      scrollPOS = appWrapper.scrollTop;
-    };
-    // socket.io setup
-    socket = io.connect(location.origin);
-    socket.on('connect', () => {
-      var led = document.querySelector('#statusIndicator');
-      if (led.classList.contains('offline')) {
-        led.classList.remove('offline');
-        led.classList.add('online');
-      }
-    });
-    socket.on('disconnect', () => {
-      var led = document.querySelector('#statusIndicator');
-      let led2 = document.querySelector('#routerStatus');
-      if (led.classList.contains('online')) {
-        led.classList.remove('online');
-        led.classList.add('offline');
-      }
-      if (led2.classList.contains('online')) {
-        led2.classList.remove('online');
-        led2.classList.add('offline');
-      }
-    });
-    socket.on('history', logs => sortHistory(logs).then(data => {
-      appData = data;
-      graphData(data);
-    }));
-    socket.on('count', count => {
-      // if (count.count <= appData[count.host].length) {
-      //   document.querySelector('#previous').style.display = 'none';
-      // }
-    })
-    socket.on('log', log => console.log(log));
-    socket.on('restarts', logs => {
-      if (lastRebootTimer) clearTimeout(lastRebootTimer);
-      outputRestarts(logs)
-    });
-    socket.on('toast', message => {
-      if (message === 'rebooting router...') {
-        reboot.classList.add('disabled-button')
-        startProgress();
-      }
-      if (message === 'powering on router...') reboot.classList.remove('disabled-button');
-      showToast(message);
-    });
-    socket.on('router-status', status => {
-      let led = document.querySelector('#routerStatus');
-      if (status.data.hasOwnProperty('time')) {
+      let scrollPOS;
+      appWrapper.onscroll = e => {
+        if (appWrapper.scrollTop < scrollPOS) fab.style.transform = 'translateY(80px)';
+        if (appWrapper.scrollTop > scrollPOS) fab.style.transform = 'translateY(0px)';
+        if (appWrapper.scrollTop === 0) fab.style.transform = 'translateY(80px)';
+        scrollPOS = appWrapper.scrollTop;
+      };
+      // socket.io setup
+      socket = io.connect(location.origin);
+      socket.on('connect', () => {
+        var led = document.querySelector('#statusIndicator');
         if (led.classList.contains('offline')) {
           led.classList.remove('offline');
           led.classList.add('online');
         }
-      } else {
+      });
+      socket.on('disconnect', () => {
+        var led = document.querySelector('#statusIndicator');
+        let led2 = document.querySelector('#routerStatus');
         if (led.classList.contains('online')) {
           led.classList.remove('online');
           led.classList.add('offline');
         }
-      }
-    });
-    // open reboot dialog
-    reboot.addEventListener('click', e => {
-      if (!e.target.classList.contains('disabled-button')) {
-        setTimeout(() => {
-          reboot.classList.add('disabled-button');
-        }, 300);
-        makeRipple(e).then(openRebootDialog);
-        return;
-      }
-    });
-    // close reboot dialog
-    rebootClose.addEventListener('click', e => makeRipple(e).then(closeRebootDialog).then(() => {
-      reboot.classList.remove('disabled-button');
-    }));
-    // close reboot dialog and reboot
-    rebootButton.addEventListener('click', e => makeRipple(e).then(closeRebootDialog).then(() => {
-      socket.emit('force-reboot');
-    }));
+        if (led2.classList.contains('online')) {
+          led2.classList.remove('online');
+          led2.classList.add('offline');
+        }
+      });
+      socket.on('history', logs => sortHistory(logs).then(data => {
+        appData = data;
+        graphData(data);
+      }));
+      socket.on('count', count => {
+        // if (count.count <= appData[count.host].length) {
+        //   document.querySelector('#previous').style.display = 'none';
+        // }
+      })
+      socket.on('log', log => console.log(log));
+      socket.on('restarts', logs => {
+        if (lastRebootTimer) clearTimeout(lastRebootTimer);
+        outputRestarts(logs)
+      });
+      socket.on('toast', message => {
+        if (message === 'rebooting router...') {
+          reboot.classList.add('disabled-button')
+          startProgress();
+        }
+        if (message === 'powering on router...') reboot.classList.remove('disabled-button');
+        showToast(message);
+      });
+      socket.on('router-status', status => {
+        let led = document.querySelector('#routerStatus');
+        if (status.data.hasOwnProperty('time')) {
+          if (led.classList.contains('offline')) {
+            led.classList.remove('offline');
+            led.classList.add('online');
+          }
+        } else {
+          if (led.classList.contains('online')) {
+            led.classList.remove('online');
+            led.classList.add('offline');
+          }
+        }
+      });
+      // open reboot dialog
+      reboot.addEventListener('click', e => {
+        if (!e.target.classList.contains('disabled-button')) {
+          setTimeout(() => {
+            reboot.classList.add('disabled-button');
+          }, 300);
+          openRebootDialog();
+          return;
+        }
+      });
+      // close reboot dialog
+      rebootClose.addEventListener('click', e => closeRebootDialog().then(() => {
+        reboot.classList.remove('disabled-button');
+      }));
+      // close reboot dialog and reboot
+      rebootButton.addEventListener('click', e => closeRebootDialog().then(() => {
+        socket.emit('force-reboot');
+      }));
+    }, 200);
   };
 })();

@@ -15,8 +15,8 @@ module.exports = function(grunt) {
       build: {
         files: {
           'html/js/rebooter-client.min.js': [
-            'html/js/rebooter-client.js',
             'html/js/Charts.min.js',
+            'html/js/rebooter-client.js',
             'html/js/io.js'
           ]
         }
@@ -44,7 +44,8 @@ module.exports = function(grunt) {
       build: {
         files: {
           'html/css/rebooter-client.min.css': [
-            'html/css/base.css'
+            'html/css/base.css',
+            'html/css/paper-ripple.min.css'
           ]
         }
       }
