@@ -364,7 +364,7 @@
 //           socket.emit('count', key);
 //         });
 //         dialog.appendChild(previous);
-//         create the canvas
+        // create the canvas
         let detailedCanvas = document.createElement('canvas');
         detailedCanvas.width = window.innerWidth - (80 + 32 + scrollbarWidth());
         detailedCanvas.height = 250;
@@ -408,10 +408,14 @@
     let last = document.querySelector('#lastRestart');
     lastRebootTimer = setTimeout(() => outputRestarts(logs), 1000);
     if (logs.length) {
-      last.textContent = ago(logs[logs.length - 1].time);
+      requestAnimationFrame(() => {      
+        last.textContent = ago(logs[logs.length - 1].time);
+      });
       return;
     }
-    last.textContent = 'never';
+    requestAnimationFrame(() => {  
+      last.textContent = 'never';
+    });
   }
 
   /**
@@ -496,16 +500,22 @@
     });
   }
 
-  function animateScrollUP() {
-    let appWrapper = document.querySelector('.wrapper');
-    let pos = appWrapper.scrollTop;
+
+  function animateScroll() {
+    let wrapper = document.querySelector('.wrapper');
+    let card = document.querySelector('#card');
+    let fromTop = wrapper.scrollTop;
+    let margin = 0;
+    card.style.willChange = 'transform';
     requestAnimationFrame(function step() {
-      pos -= 40;
-      if (pos <= 0) {
-        appWrapper.scrollTop = 0;
+      margin += 40;
+      if (margin >= fromTop) {
+        card.style.transform = 'none';
+        card.style.willChange = 'auto';
+        wrapper.scrollTop = 0;
         return;
       }
-      appWrapper.scrollTop = pos;
+      card.style.transform = 'translateY(' + margin + 'px)';
       requestAnimationFrame(step);
     });
   }
@@ -522,7 +532,7 @@
       graphData(appData);
       timer = 0;
     }, 100);
-    positionThings();
+    requestAnimationFrame(positionThings);
   };
 
   // run the app
@@ -541,8 +551,8 @@
       let rebootClose = document.querySelector('#reboot-dialog-close');
       let rebootButton = document.querySelector('#reboot-dialog-reboot');
       let appWrapper = document.querySelector('.wrapper');
-      let fab = document.querySelector('#fab');
       // setup ripple for action fab
+      let fab = document.querySelector('#fab');
       fab.PaperRipple = new PaperRipple();
       fab.appendChild(fab.PaperRipple.$);
       fab.PaperRipple.$.classList.add('paper-ripple--round');
@@ -550,34 +560,43 @@
       fab.PaperRipple.center = true;
       fab.addEventListener('mousedown', ev => fab.PaperRipple.downAction(ev));
       fab.addEventListener('mouseup', ev => fab.PaperRipple.upAction());
-      fab.addEventListener('click', e => animateScrollUP(e));
+      fab.addEventListener('click', () => animateScroll());
 
       let scrollPOS;
       appWrapper.onscroll = e => {
-        if (appWrapper.scrollTop < scrollPOS) fab.style.transform = 'translateY(80px)';
-        if (appWrapper.scrollTop > scrollPOS) fab.style.transform = 'translateY(0px)';
-        if (appWrapper.scrollTop === 0) fab.style.transform = 'translateY(80px)';
-        scrollPOS = appWrapper.scrollTop;
+        requestAnimationFrame(() => {                    
+          let scrollTop = e.target.scrollTop;
+          if (scrollTop < scrollPOS) fab.style.transform = 'translateY(80px)';
+          if (scrollTop > scrollPOS) fab.style.transform = 'translateY(0px)';
+          if (scrollTop === 0) fab.style.transform = 'translateY(80px)';
+          scrollPOS = appWrapper.scrollTop;
+        });
       };
       // socket.io setup
       socket = io.connect(location.origin);
       socket.on('connect', () => {
         var led = document.querySelector('#statusIndicator');
         if (led.classList.contains('offline')) {
-          led.classList.remove('offline');
-          led.classList.add('online');
+          requestAnimationFrame(() => {            
+            led.classList.remove('offline');
+            led.classList.add('online');
+          });
         }
       });
       socket.on('disconnect', () => {
         var led = document.querySelector('#statusIndicator');
         let led2 = document.querySelector('#routerStatus');
         if (led.classList.contains('online')) {
-          led.classList.remove('online');
-          led.classList.add('offline');
+          requestAnimationFrame(() => {
+            led.classList.remove('online');
+            led.classList.add('offline');
+          });
         }
         if (led2.classList.contains('online')) {
-          led2.classList.remove('online');
-          led2.classList.add('offline');
+          requestAnimationFrame(() => {
+            led2.classList.remove('online');
+            led2.classList.add('offline');
+          });
         }
       });
       socket.on('history', logs => sortHistory(logs).then(data => {
