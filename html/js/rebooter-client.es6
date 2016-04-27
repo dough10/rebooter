@@ -69,7 +69,7 @@
       if (progress >= 0) {
         setProgress(bar, 0);
         wrapper.style.display = 'none';
-        bar.style.willChange = 'auto';
+        bar.style.willChange = 'initial';
         return;
       }
       setProgress(bar, progress);
@@ -96,7 +96,7 @@
         });
         el.dispatchEvent(event);
         setOpacity(el, 1);
-        el.style.willChange = 'auto';
+        el.style.willChange = 'initial';
         return;
       }
       setOpacity(el, opacity);
@@ -123,7 +123,7 @@
         });
         el.dispatchEvent(event);
         setOpacity(el, 0);
-        el.style.willChange = 'auto';
+        el.style.willChange = 'initial';
         return;
       }
       setOpacity(el, opacity);
@@ -408,12 +408,12 @@
     let last = document.querySelector('#lastRestart');
     lastRebootTimer = setTimeout(() => outputRestarts(logs), 1000);
     if (logs.length) {
-      requestAnimationFrame(() => {      
+      requestAnimationFrame(() => {
         last.textContent = ago(logs[logs.length - 1].time);
       });
       return;
     }
-    requestAnimationFrame(() => {  
+    requestAnimationFrame(() => {
       last.textContent = 'never';
     });
   }
@@ -479,7 +479,7 @@
       dialog.style.willChange = 'transform';
       if (!dialog.classList.contains('dialog-opened')) dialog.classList.add('dialog-opened');
       setTimeout(() => {
-        dialog.style.willChange = 'auto';
+        dialog.style.willChange = 'initial';
       }, 400);
       resolve();
     });
@@ -494,7 +494,7 @@
       dialog.style.willChange = 'transform';
       if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
       setTimeout(() => {
-        dialog.style.willChange = 'auto';
+        dialog.style.willChange = 'initial';
       }, 400);
       resolve();
     });
@@ -511,7 +511,7 @@
       margin += 40;
       if (margin >= fromTop) {
         card.style.transform = 'none';
-        card.style.willChange = 'auto';
+        card.style.willChange = 'initial';
         wrapper.scrollTop = 0;
         return;
       }
@@ -564,12 +564,23 @@
 
       let scrollPOS;
       appWrapper.onscroll = e => {
-        requestAnimationFrame(() => {                    
+        requestAnimationFrame(() => {
           let scrollTop = e.target.scrollTop;
-          if (scrollTop < scrollPOS) fab.style.transform = 'translateY(80px)';
-          if (scrollTop > scrollPOS) fab.style.transform = 'translateY(0px)';
-          if (scrollTop === 0) fab.style.transform = 'translateY(80px)';
-          scrollPOS = appWrapper.scrollTop;
+          let totalScroll = e.target.scrollHeight - e.target.clientHeight;
+          if (scrollTop >= totalScroll - (totalScroll / 5)) {
+            fab.style.transform = 'translateY(0px)';
+            return;
+          }
+          if (scrollTop < scrollPOS) {
+            fab.style.transform = 'translateY(80px)';
+          }
+          if (scrollTop > scrollPOS) {
+            fab.style.transform = 'translateY(0px)';
+          }
+          if (scrollTop === 0) {
+            fab.style.transform = 'translateY(80px)';
+          }
+          scrollPOS = scrollTop;
         });
       };
       // socket.io setup
@@ -577,7 +588,7 @@
       socket.on('connect', () => {
         var led = document.querySelector('#statusIndicator');
         if (led.classList.contains('offline')) {
-          requestAnimationFrame(() => {            
+          requestAnimationFrame(() => {
             led.classList.remove('offline');
             led.classList.add('online');
           });
