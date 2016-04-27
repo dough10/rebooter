@@ -537,133 +537,130 @@
 
   // run the app
   window.onload = () => {
-    setTimeout(() => {
-      let buttons  = document.querySelectorAll('.button');
-      [].slice.call(buttons).forEach(button => {
-        button.PaperRipple = new PaperRipple();
-        button.appendChild(button.PaperRipple.$);
-        button.addEventListener('mousedown', ev => button.PaperRipple.downAction(ev));
-        button.addEventListener('mouseup', e => button.PaperRipple.upAction());
-      });
-      positionThings();
-      // fade card opacity
-      let reboot = document.querySelector('#reboot');
-      let rebootClose = document.querySelector('#reboot-dialog-close');
-      let rebootButton = document.querySelector('#reboot-dialog-reboot');
-      let appWrapper = document.querySelector('.wrapper');
-      // setup ripple for action fab
-      let fab = document.querySelector('#fab');
-      fab.PaperRipple = new PaperRipple();
-      fab.appendChild(fab.PaperRipple.$);
-      fab.PaperRipple.$.classList.add('paper-ripple--round');
-      fab.PaperRipple.recenters = true;
-      fab.PaperRipple.center = true;
-      fab.addEventListener('mousedown', ev => fab.PaperRipple.downAction(ev));
-      fab.addEventListener('mouseup', ev => fab.PaperRipple.upAction());
-      fab.addEventListener('click', () => animateScroll());
+    let buttons  = document.querySelectorAll('.button');
+    [].slice.call(buttons).forEach(button => {
+      button.PaperRipple = new PaperRipple();
+      button.appendChild(button.PaperRipple.$);
+      button.addEventListener('mousedown', ev => button.PaperRipple.downAction(ev));
+      button.addEventListener('mouseup', e => button.PaperRipple.upAction());
+    });
+    positionThings();
+    // fade card opacity
+    let reboot = document.querySelector('#reboot');
+    let rebootClose = document.querySelector('#reboot-dialog-close');
+    let rebootButton = document.querySelector('#reboot-dialog-reboot');
+    let appWrapper = document.querySelector('.wrapper');
+    // setup ripple for action fab
+    let fab = document.querySelector('#fab');
+    fab.PaperRipple = new PaperRipple();
+    fab.appendChild(fab.PaperRipple.$);
+    fab.PaperRipple.$.classList.add('paper-ripple--round');
+    fab.PaperRipple.recenters = true;
+    fab.PaperRipple.center = true;
+    fab.addEventListener('mousedown', ev => fab.PaperRipple.downAction(ev));
+    fab.addEventListener('mouseup', ev => fab.PaperRipple.upAction());
+    fab.addEventListener('click', () => animateScroll());
 
-      let scrollPOS;
-      appWrapper.onscroll = e => {
-        requestAnimationFrame(() => {
-          let scrollTop = e.target.scrollTop;
-          let totalScroll = e.target.scrollHeight - e.target.clientHeight;
-          if (scrollTop >= totalScroll - (totalScroll / 5)) {
-            fab.style.transform = 'translateY(0px)';
-            return;
-          }
-          if (scrollTop < scrollPOS) {
-            fab.style.transform = 'translateY(80px)';
-          }
-          if (scrollTop > scrollPOS) {
-            fab.style.transform = 'translateY(0px)';
-          }
-          if (scrollTop === 0) {
-            fab.style.transform = 'translateY(80px)';
-          }
-          scrollPOS = scrollTop;
-        });
-      };
-      // socket.io setup
-      socket = io.connect(location.origin);
-      socket.on('connect', () => {
-        var led = document.querySelector('#statusIndicator');
-        if (led.classList.contains('offline')) {
-          requestAnimationFrame(() => {
-            led.classList.remove('offline');
-            led.classList.add('online');
-          });
-        }
-      });
-      socket.on('disconnect', () => {
-        var led = document.querySelector('#statusIndicator');
-        let led2 = document.querySelector('#routerStatus');
-        if (led.classList.contains('online')) {
-          requestAnimationFrame(() => {
-            led.classList.remove('online');
-            led.classList.add('offline');
-          });
-        }
-        if (led2.classList.contains('online')) {
-          requestAnimationFrame(() => {
-            led2.classList.remove('online');
-            led2.classList.add('offline');
-          });
-        }
-      });
-      socket.on('history', logs => sortHistory(logs).then(data => {
-        appData = data;
-        graphData(data);
-      }));
-      socket.on('count', count => {
-        // if (count.count <= appData[count.host].length) {
-        //   document.querySelector('#previous').style.display = 'none';
-        // }
-      })
-      socket.on('log', log => console.log(log));
-      socket.on('restarts', logs => {
-        if (lastRebootTimer) clearTimeout(lastRebootTimer);
-        outputRestarts(logs)
-      });
-      socket.on('toast', message => {
-        if (message === 'rebooting router...') {
-          reboot.classList.add('disabled-button')
-          startProgress();
-        }
-        if (message === 'powering on router...') reboot.classList.remove('disabled-button');
-        showToast(message);
-      });
-      socket.on('router-status', status => {
-        let led = document.querySelector('#routerStatus');
-        if (status.data.hasOwnProperty('time')) {
-          if (led.classList.contains('offline')) {
-            led.classList.remove('offline');
-            led.classList.add('online');
-          }
-        } else {
-          if (led.classList.contains('online')) {
-            led.classList.remove('online');
-            led.classList.add('offline');
-          }
-        }
-      });
-      // open reboot dialog
-      reboot.addEventListener('click', e => {
-        if (!e.target.classList.contains('disabled-button')) {
-          setTimeout(() => {
-            reboot.classList.add('disabled-button');
-          }, 300);
-          openRebootDialog();
+    let scrollPOS;
+    appWrapper.onscroll = e => {
+      requestAnimationFrame(() => {
+        let scrollTop = e.target.scrollTop;
+        let totalScroll = e.target.scrollHeight - e.target.clientHeight;
+        if (scrollTop >= totalScroll - (totalScroll / 5)) {
+          fab.style.transform = 'translateY(0px)';
           return;
         }
+        if (scrollTop < scrollPOS) {
+          fab.style.transform = 'translateY(80px)';
+        }
+        if (scrollTop > scrollPOS) {
+          fab.style.transform = 'translateY(0px)';
+        }
+        if (scrollTop === 0) {
+          fab.style.transform = 'translateY(80px)';
+        }
+        scrollPOS = scrollTop;
       });
-      // close reboot dialog
-      rebootClose.addEventListener('click', e => closeRebootDialog().then(() => {
-        reboot.classList.remove('disabled-button');
-      }));
-      // close reboot dialog and reboot
-      rebootButton.addEventListener('click', e => closeRebootDialog().then(() => {
-        socket.emit('force-reboot');
-      }));
-    }, 200);
+    };
+    // socket.io setup
+    socket = io.connect(location.origin);
+    socket.on('connect', () => {
+      var led = document.querySelector('#statusIndicator');
+      if (led.classList.contains('offline')) {
+        requestAnimationFrame(() => {
+          led.classList.remove('offline');
+          led.classList.add('online');
+        });
+      }
+    });
+    socket.on('disconnect', () => {
+      var led = document.querySelector('#statusIndicator');
+      let led2 = document.querySelector('#routerStatus');
+      if (led.classList.contains('online')) {
+        requestAnimationFrame(() => {
+          led.classList.remove('online');
+          led.classList.add('offline');
+        });
+      }
+      if (led2.classList.contains('online')) {
+        requestAnimationFrame(() => {
+          led2.classList.remove('online');
+          led2.classList.add('offline');
+        });
+      }
+    });
+    socket.on('history', logs => sortHistory(logs).then(data => {
+      appData = data;
+      graphData(data);
+    }));
+    socket.on('count', count => {
+      // if (count.count <= appData[count.host].length) {
+      //   document.querySelector('#previous').style.display = 'none';
+      // }
+    })
+    socket.on('log', log => console.log(log));
+    socket.on('restarts', logs => {
+      if (lastRebootTimer) clearTimeout(lastRebootTimer);
+      outputRestarts(logs)
+    });
+    socket.on('toast', message => {
+      if (message === 'rebooting router...') {
+        reboot.classList.add('disabled-button')
+        startProgress();
+      }
+      if (message === 'powering on router...') reboot.classList.remove('disabled-button');
+      showToast(message);
+    });
+    socket.on('router-status', status => {
+      let led = document.querySelector('#routerStatus');
+      if (status.data.hasOwnProperty('time')) {
+        if (led.classList.contains('offline')) {
+          led.classList.remove('offline');
+          led.classList.add('online');
+        }
+        return;
+      }
+      if (led.classList.contains('online')) {
+        led.classList.remove('online');
+        led.classList.add('offline');
+      }
+      }
+    });
+    // open reboot dialog
+    reboot.addEventListener('click', e => {
+      if (e.target.classList.contains('disabled-button')) return;
+      setTimeout(() => {
+        reboot.classList.add('disabled-button');
+      }, 300);
+      openRebootDialog();
+    });
+    // close reboot dialog
+    rebootClose.addEventListener('click', e => closeRebootDialog().then(() => {
+      reboot.classList.remove('disabled-button');
+    }));
+    // close reboot dialog and reboot
+    rebootButton.addEventListener('click', e => closeRebootDialog().then(() => {
+      socket.emit('force-reboot');
+    }));
   };
 })();
