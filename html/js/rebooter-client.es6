@@ -644,7 +644,6 @@
         led.classList.remove('online');
         led.classList.add('offline');
       }
-      }
     });
     // open reboot dialog
     reboot.addEventListener('click', e => {
