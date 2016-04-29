@@ -219,7 +219,7 @@ function count(host) {
   });
 }
 
-function getLogs(host, skip, limit) {
+function getLogs(host, skip, limit , color) {
   return new Promise(resolve => {
     if (!isValidHost(host)) {
       resolve({
@@ -245,7 +245,8 @@ function getLogs(host, skip, limit) {
       resolve({
         status: 200,
         history: logs,
-        host: host
+        host: host,
+        color: color
       })
     });
   });
@@ -304,7 +305,7 @@ function start() {
 io.on('connection', socket => {
   socket.on('force-reboot', () => rebootRouter('manual'));
   socket.on('count', host => count(host).then(count => emit('count', count)));
-  socket.on('log', obj => getLogs(obj.host, obj.skip, obj.limit).then(log => emit('log', log)));
+  socket.on('log', obj => getLogs(obj.host, obj.skip, obj.limit, obj.color).then(log => emit('log', log)));
   pushRestarts();
   pushHistory();
   network.get_gateway_ip((err, ip) => ping(ip).then(res => emit('router-status', res)));

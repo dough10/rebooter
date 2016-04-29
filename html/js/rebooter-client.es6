@@ -3,7 +3,13 @@
   // object to store application data
   let appData = {};
 
+  let dataPoints;
+ 
   let socket;
+ 
+  let page = 1;
+ 
+  let maxPage;
 
   /**
    * return readable time sence a given date
@@ -154,6 +160,20 @@
   }
 
   /**
+   * return a array of ping entry times
+   *
+   * @param {Array} array
+   */
+  function returnLocaleTime(array) {
+    let output = [];
+    let len = array.length;
+    for (let i = 0; i < len; i++) {
+      output.push(new Date(array[i].time).toLocaleString());
+    }
+    return output;
+  }
+
+  /**
    * return a array of ping entry data
    *
    * @param {Array} array
@@ -208,6 +228,9 @@
     return (w1 - w2);
   }
 
+  
+  
+
 
   /**
    * render graphs of the input data
@@ -215,28 +238,27 @@
    * @param {Object} data
    */
   function graphData(data) {
-    let card = document.querySelector('#card');
-    let width = card.offsetWidth - 48;
+    const card = document.querySelector('#card');
     for (let key in data) {
       // check if a dialog already is opened
       const id = 'el-' + key.replace(/\./g,'');
       const exist = document.querySelector('#' + id);
       if (exist) card.removeChild(exist);
       // create the new dialog
-      let div = document.createElement('div');
-      let text = document.createElement('h3');
+      const div = document.createElement('div');
+      const text = document.createElement('h3');
       div.id = id;
       div.style.opacity = 0;
       // set header text
       text.textContent = key;
       div.appendChild(text);
       // create canvas
-      let canvas = document.createElement('canvas');
-      canvas.width = width;
+      const canvas = document.createElement('canvas');
+      canvas.width = card.offsetWidth - 48;
       canvas.height = 100;
       canvas.style.pointerEvents = 'none';
       // create clickable area
-      let canvasWrapper = document.createElement('div');
+      const canvasWrapper = document.createElement('div');
       canvasWrapper.classList.add('clickable');
       canvasWrapper.dataset.rippleColor = "#673AB7"
       canvasWrapper.appendChild(canvas);
@@ -244,10 +266,10 @@
       // send graph to the DOM
       card.appendChild(div);
       // generate graph data
-      let graphData = returnData(data[key]);
-      let r = (Math.floor(Math.random() * 256));
-      let g = (Math.floor(Math.random() * 256));
-      let b = (Math.floor(Math.random() * 256));
+      const graphData = returnData(data[key]);
+      const r = (Math.floor(Math.random() * 256));
+      const g = (Math.floor(Math.random() * 256));
+      const b = (Math.floor(Math.random() * 256));
       let chartData = {
         labels: returnBlankLabel(data[key]),
         datasets: [
@@ -259,8 +281,8 @@
           }
         ]
       };
-      let ctx = canvas.getContext("2d");
-      let chart = new Chart(ctx).Line(chartData, {
+      const ctx = canvas.getContext("2d");
+      const chart = new Chart(ctx).Line(chartData, {
         animation: false,
         pointDot: false,
         showTooltips: false,
@@ -268,34 +290,28 @@
         scaleFontFamily: "'Roboto', 'Noto', sans-serif",
         scaleFontSize: 10
       });
-      fadeIn(div).then(_ => {
-        let loader = document.querySelector('#loader');
-        if (loader.style.opacity !== 0) fadeOut(loader);
-      });
+      fadeIn(div);
+      const loader = document.querySelector('#loader');
+      if (loader.style.opacity !== 0) fadeOut(loader);
       canvasWrapper.addEventListener('click', e => {
-        let totalDatapoints;
-        socket.emit('count', key);
-        socket.on('count', count => {
-          totalDatapoints = count.count;
-        });
         // check if a graph is already open
-        let exist = document.querySelector('#chartDialog');
-        let body = document.querySelector('body');
+        const exist = document.querySelector('#chartDialog');
+        const body = document.querySelector('body');
         if (exist) body.removeChild(exist);
         // create a new dialog
-        let dialog = document.createElement('div');
+        const dialog = document.createElement('div');
         dialog.id = 'chartDialog';
         dialog.classList.add('dialog');
-        let spaceBetween = document.createElement('div');
+        const spaceBetween = document.createElement('div');
         dialog.appendChild(spaceBetween);
         spaceBetween.classList.add('flex');
         spaceBetween.classList.add('space-between');
         // create the text container
-        let textHeader = document.createElement('div');
+        const textHeader = document.createElement('div');
         spaceBetween.appendChild(textHeader);
-        let right = document.createElement('div');
-        let close = document.createElement('div');
-        let closeIcon = document.createElement('i');
+        const right = document.createElement('div');
+        const close = document.createElement('div');
+        const closeIcon = document.createElement('i');
         closeIcon.classList.add('material-icons');
         closeIcon.style.color = 'red';
         close.style.color = 'red';
@@ -318,50 +334,58 @@
         right.appendChild(close);
         spaceBetween.appendChild(right);
         // header text
-        let label = document.createElement('h2');
+        const label = document.createElement('h2');
         label.textContent = key;
         textHeader.appendChild(label);
         // highest ping
-        let highest = document.createElement('div');
+        const highest = document.createElement('div');
         highest.textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
         highest.classList.add('high-low-text');
         textHeader.appendChild(highest);
         // lowest ping
-        let lowest = document.createElement('div');
+        const lowest = document.createElement('div');
         lowest.textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
         lowest.classList.add('high-low-text');
         textHeader.appendChild(lowest);
-        // // previous button
-//         let previous = document.createElement('i');
-//         previous.classList.add('material-icons');
-//         previous.textContent = 'keyboard_backspace';
-//         previous.classList.add('icon-button');
-//         previous.addEventListener('click', e => {
-//           socket.emit('count', key);
-//         });
-//         dialog.appendChild(previous);
+      
+        // box for buttons to navigate back and forwards through data
+        const buttonBar = document.createElement('div');
+        buttonBar.classList.add('flex');
+        buttonBar.classList.add('space-between');
+        const back = document.createElement('div');
+        back.id = 'backB';
+        const forward = document.createElement('div');
+        forward.id = 'forwardB';
+        buttonBar.appendChild(back);
+        buttonBar.appendChild(forward)
+        dialog.appendChild(buttonBar);
+      
         // create the canvas
         const winHeight = window.innerHeight;
         const detailedCanvas = document.createElement('canvas');
         detailedCanvas.width = window.innerWidth - (80 + 32 + scrollbarWidth());
         detailedCanvas.height = (_ => {
           if (winHeight < 450) {
-            return 150; 
+            return 125; 
           } else {
             return 250;
           }
         })();
         detailedCanvas.style.marginBottom = '16px';
         dialog.appendChild(detailedCanvas);
-        // attach dialog to body
+      
+        // send dialog to DOM
         body.appendChild(dialog);
+      
+        // position the dialog
         const dialogTotalHeight = (dialog.offsetHeight + 48);
         const centerH = Math.floor((winHeight - 32) / 2);
         const centerDH = Math.floor(dialogTotalHeight / 2);
         dialog.style.top = Math.floor(centerH - centerDH) + 'px';
         dialog.style.left = '0px';
-        // render the graph
-        chartData.labels = returnTime(data[key]);
+      
+        // set detailed graph
+        chartData.labels = returnLocaleTime(data[key]);
         const detailedCTX = detailedCanvas.getContext("2d");
         let chart = new Chart(detailedCTX).Line(chartData, {
           animation: false,
@@ -378,6 +402,31 @@
         setTimeout(() => {
           dialog.classList.add('dialog-opened');
         }, 100);
+        socket.emit('count', key);
+        socket.on('count', count => {
+          dataPoints = count.count;
+          maxPage = count.count / appData[count.host].length;
+          if (count.count > appData[count.host].length) {
+            // previous button
+            const previous = createIconButton('keyboard_backspace');
+            previous.id = 'previousButton';
+            previous.addEventListener('click', e => {
+              const limit = data[key].length;
+              page++;
+              socket.emit('log', {
+                host: key, 
+                limit: limit,
+                skip: count.count - (limit * page),
+                color: {
+                  r: r,
+                  g:g,
+                  b:b
+                }
+              });
+            });
+            back.appendChild(previous);
+          }
+        });
       });
     }
   }
@@ -390,14 +439,14 @@
   let lastRebootTimer  = 0;
   function outputRestarts(logs) {
     let last = document.querySelector('#lastRestart');
-    lastRebootTimer = setTimeout(() => outputRestarts(logs), 1000);
+    lastRebootTimer = setTimeout(_ => outputRestarts(logs), 1000);
     if (logs.length) {
-      requestAnimationFrame(() => {
+      requestAnimationFrame(_ => {
         last.textContent = ago(logs[logs.length - 1].time);
       });
       return;
     }
-    requestAnimationFrame(() => {
+    requestAnimationFrame(_ => {
       last.textContent = 'never';
     });
   }
@@ -405,28 +454,28 @@
   /**
    * display a toast message
    */
-  function showToast(text) {
-    let toast = document.createElement('div');
+  function showToast(text, _timeout) {
+    const toast = document.createElement('div');
+    const transitionEnd = _ => {
+      setTimeout(_ => {
+        toast.addEventListener('transitionend', _ => {
+          document.querySelector('body').removeChild(toast);
+        });
+        toast.classList.add('hidden');
+      }, _timeout || 5000);
+      toast.removeEventListener('transitionend', transitionEnd);
+      toast.style.willChange = 'initial';
+    };
     toast.classList.add('toast');
     toast.classList.add('hidden');
     toast.style.willChange = 'opacity';
+    toast.id = 'toast'
     toast.textContent = text;
     document.querySelector('body').appendChild(toast);
-    setTimeout(() => {
+    setTimeout(_ => {
       toast.classList.remove('hidden');
-      setTimeout(hideToast, 3000);
-    }, 300);
-  }
-
-  /**
-   * hide the toast
-   */
-  function hideToast() {
-    let toast = document.querySelector('.toast');
-    toast.classList.add('hidden');
-    setTimeout(function() {
-      document.querySelector('body').removeChild(toast);
-    }, 350);
+      toast.addEventListener('transitionend', transitionEnd, true);
+    }, 50);
   }
 
   /**
@@ -459,13 +508,17 @@
    */
   function openRebootDialog() {
     return new Promise(resolve => {
-      let dialog = document.querySelector('#reboot-dialog');
-      dialog.style.willChange = 'transform';
-      if (!dialog.classList.contains('dialog-opened')) dialog.classList.add('dialog-opened');
-      setTimeout(() => {
+      const dialog = document.querySelector('#reboot-dialog');
+      const transitionEnd = _ => {
         dialog.style.willChange = 'initial';
-      }, 400);
-      resolve();
+        dialog.removeEventListener('transitionend', transitionEnd);
+        resolve();
+      };
+      if (!dialog.classList.contains('dialog-opened')) {
+        dialog.style.willChange = 'transform';
+        dialog.classList.add('dialog-opened');
+        dialog.addEventListener('transitionend', transitionEnd, true);
+      }
     });
   }
 
@@ -474,13 +527,17 @@
    */
    function closeRebootDialog() {
     return new Promise(resolve => {
-      let dialog = document.querySelector('#reboot-dialog');
-      dialog.style.willChange = 'transform';
-      if (dialog.classList.contains('dialog-opened')) dialog.classList.remove('dialog-opened');
-      setTimeout(() => {
+      const dialog = document.querySelector('#reboot-dialog');
+      const transitionEnd = _ => {
         dialog.style.willChange = 'initial';
-      }, 400);
-      resolve();
+        dialog.removeEventListener('transitionend', transitionEnd);
+        resolve();
+      };
+      if (dialog.classList.contains('dialog-opened')) {
+        dialog.style.willChange = 'transform';
+        dialog.classList.remove('dialog-opened');
+        dialog.addEventListener('transitionend', transitionEnd, true);
+      }
     });
   }
 
@@ -502,6 +559,22 @@
       card.style.transform = 'translateY(' + margin + 'px)';
       requestAnimationFrame(step);
     });
+  }
+
+
+  function createIconButton(icon) {
+    const button = document.createElement('i');
+    button.classList.add('material-icons');
+    button.textContent = icon;
+    button.classList.add('icon-button')
+    button.PaperRipple = new PaperRipple();
+    button.appendChild(button.PaperRipple.$);
+    button.PaperRipple.$.classList.add('paper-ripple--round');
+    button.PaperRipple.recenters = true;
+    button.PaperRipple.center = true;
+    button.addEventListener('mousedown', ev => button.PaperRipple.downAction(ev));
+    button.addEventListener('mouseup', ev => button.PaperRipple.upAction());  
+    return button;
   }
 
 
@@ -553,25 +626,27 @@
     document.querySelector('body').appendChild(ripples);
     
     
-    fab.addEventListener('click', () => animateScroll());
+    fab.addEventListener('click', _ => animateScroll());
 
     let scrollPOS;
     appWrapper.onscroll = e => {
-      requestAnimationFrame(() => {
+      requestAnimationFrame(_ => {
         let scrollTop = e.target.scrollTop;
         let totalScroll = e.target.scrollHeight - e.target.clientHeight;
         if (scrollTop >= totalScroll - (totalScroll / 5)) {
           fab.style.transform = 'translateY(0px)';
           return;
         }
-        if (scrollTop < scrollPOS) {
-          fab.style.transform = 'translateY(80px)';
-        }
-        if (scrollTop > scrollPOS) {
-          fab.style.transform = 'translateY(0px)';
-        }
-        if (scrollTop === 0) {
-          fab.style.transform = 'translateY(80px)';
+        switch (true) {
+          case (scrollTop < scrollPOS):
+            fab.style.transform = 'translateY(80px)';
+            break;
+          case (scrollTop > scrollPOS):
+            fab.style.transform = 'translateY(0px)';
+            break;
+          case (scrollTop === 0):
+            fab.style.transform = 'translateY(80px)';
+            break;
         }
         scrollPOS = scrollTop;
       });
@@ -607,12 +682,94 @@
       appData = data;
       graphData(data);
     }));
-    socket.on('count', count => {
-      // if (count.count <= appData[count.host].length) {
-      //   document.querySelector('#previous').style.display = 'none';
-      // }
-    })
-    socket.on('log', log => console.log(log));
+    socket.on('log', log => {
+      if (log.history.length) {
+        const dialog = document.querySelector('#chartDialog');
+        const oldCanvas = dialog.querySelector('canvas');
+        const newCanvas = document.createElement('canvas');
+        newCanvas.height = oldCanvas.height;
+        newCanvas.width = oldCanvas.width;
+        dialog.removeChild(oldCanvas);
+        dialog.appendChild(newCanvas);
+        const graphData = returnData(log.history);
+        const texts = dialog.querySelectorAll('.high-low-text');
+        texts[0].textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
+        texts[1].textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
+
+        const forwardExist = dialog.querySelector('#forwardButton');
+        if (!forwardExist) {
+          const forward = createIconButton('arrow_forward');
+          forward.id = 'forwardButton';
+          forward.addEventListener('click', e => {
+            const limit = log.history.length;
+            page--;
+            socket.emit('log', {
+              host: log.host, 
+              limit: limit,
+              skip: dataPoints - (limit * page),
+              color: {
+                r: log.color.r,
+                g: log.color.g,
+                b: log.color.b
+              }
+            });
+          });
+          dialog.querySelector('#forwardB').appendChild(forward);
+        }
+        const prevExist = dialog.querySelector('#previousButton');
+        if (!prevExist) {
+          // previous button
+          const previous = createIconButton('keyboard_backspace');
+          previous.id = 'previousButton';
+          previous.addEventListener('click', e => {
+            const limit = log.history.length;
+            page++;
+            socket.emit('log', {
+              host: log.host, 
+              limit: limit,
+              skip: dataPoints - (limit * page),
+              color: {
+                r: log.color.r,
+                g: log.color.g,
+                b: log.color.b
+              }
+            });
+          });
+          dialog.querySelector('#backB').appendChild(previous);
+        }
+        if (page >= Math.floor(maxPage)) {
+          const prev = document.querySelector('#previousButton');
+          prev.parentNode.removeChild(prev);
+        }
+        if (page === 1) {
+          forwardExist.parentNode.removeChild(forwardExist);
+        }
+        
+        const chartData = {
+          labels: returnLocaleTime(log.history),
+          datasets: [
+            {
+              label: log.host + " Ping",
+              fillColor: 'rgba(' + log.color.r + ',' + log.color.g + ',' + log.color.b + ', 0.1)',
+              strokeColor: 'rgba(' + log.color.r + ',' + log.color.g + ',' + log.color.b + ', 1)',
+              data: graphData
+            }
+          ]
+        };
+        const ctx = newCanvas.getContext("2d");
+        const chart = new Chart(ctx).Line(chartData, {
+          animation: false,
+          pointDot: false,
+          showTooltips: (_ => {
+            if (window.innerWidth < 400) return false;
+            return true;
+          })(),
+          scaleLabel: "<%=value%> ms",
+          scaleFontFamily: "'Roboto', 'Noto', sans-serif",
+          scaleFontSize: 10
+        });
+      }
+    });
     socket.on('restarts', logs => {
       if (lastRebootTimer) clearTimeout(lastRebootTimer);
       outputRestarts(logs)
