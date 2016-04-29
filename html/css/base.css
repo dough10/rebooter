@@ -225,6 +225,7 @@ body {
   width: 100%;
   transform: translateX(-100%);
   background: #673AB7;
+  transition: transform 34s cubic-bezier(0, 0, 0.29, 0.74);
 }
 #fab {
   background: #673AB7;
@@ -286,4 +287,8 @@ body {
 .high-low-text {
   font-size: 12px;
   margin-bottom: 4px;
+}
+.animate {
+  will-change: opacity;
+  transition: opacity .5s ease-in-out;
 }

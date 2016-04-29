@@ -41,39 +41,28 @@
     }
   }
 
-  /**
-   * set the opacity of a give element to a give value
-   *
-   * @param {Element} el = the element to edit opacity of
-   * @param {Number} opacity = the value to set opacity to
-   */
-  function setOpacity(el, opacity) {
-    el.style.opacity = opacity;
-  }
-
-  function setProgress(bar, x) {
-    bar.style.transform = 'translateX(' + x + 'px)';
-  }
-
   function startProgress() {
-    let wrapper = document.querySelector('.bar-wrapper');
-    wrapper.style.display = 'block';
-    let total = -Math.abs(wrapper.offsetWidth);
-    let bar = document.querySelector('#rebootProgress');
-    bar.style.willChange = 'transform';
-    let frameDistance = Math.abs((total / 34.5) / 60);
-    let progress = total;
-    setProgress(bar, progress);
-    requestAnimationFrame(function step() {
-      progress += frameDistance;
-      if (progress >= 0) {
-        setProgress(bar, 0);
-        wrapper.style.display = 'none';
-        bar.style.willChange = 'initial';
-        return;
-      }
-      setProgress(bar, progress);
-      requestAnimationFrame(step);
+    return new Promise(resolve => {
+      const wrapper = document.querySelector('.bar-wrapper');
+      const bar = document.querySelector('#rebootProgress');
+      const animationEnd = e => {
+        fadeOut(wrapper).then(_ => {
+          wrapper.style.display = 'none';
+          bar.style.transform = 'translateX(-100%)';
+          bar.style.willChange = 'initial';
+          bar.removeEventListener("transitionend", animationEnd);
+          resolve();
+        });
+      };
+      bar.style.willChange = 'transform';
+      requestAnimationFrame(_ => {
+        wrapper.style.opacity = 0;
+        wrapper.style.display = 'block';
+        fadeIn(wrapper).then(_ => {
+          bar.style.transform = 'translateX(0)';
+          bar.addEventListener("transitionend", animationEnd, true);
+        });
+      });
     });
   }
 
@@ -83,24 +72,17 @@
    * @param {HTMLElement} el
    */
   function fadeIn(el) {
-    let opacity = 0;
-    el.style.willChange = 'opacity';
-    requestAnimationFrame(function step(timeStamp) {
-      opacity += 0.05;
-      if (opacity >= 1) {
-        let event = new CustomEvent('faded', {
-          detail: {
-            element: el,
-            direction: 'in'
-          }
-        });
-        el.dispatchEvent(event);
-        setOpacity(el, 1);
-        el.style.willChange = 'initial';
-        return;
-      }
-      setOpacity(el, opacity);
-      requestAnimationFrame(step);
+    return new Promise(resolve => {
+      const animationEnd = _ => {
+        el.removeEventListener("transitionend", animationEnd);
+        el.classList.remove('animate');
+        resolve();
+      };
+      el.classList.add('animate');
+      requestAnimationFrame(_ => {
+        el.style.opacity = 1;
+      });
+      el.addEventListener("transitionend", animationEnd, true);
     });
   }
 
@@ -110,24 +92,17 @@
    * @param {HTMLElement} el
    */
   function fadeOut(el) {
-    var opacity = 1;
-    el.style.willChange = 'opacity';
-    requestAnimationFrame(function step(timeStamp) {
-      opacity -= 0.05;
-      if (opacity <= 0) {
-        var event = new CustomEvent('fade', {
-          detail: {
-            element: el,
-            direction: 'out'
-          }
-        });
-        el.dispatchEvent(event);
-        setOpacity(el, 0);
-        el.style.willChange = 'initial';
-        return;
-      }
-      setOpacity(el, opacity);
-      requestAnimationFrame(step);
+    return new Promise(resolve => {
+      const animationEnd = _ => {
+        el.removeEventListener("transitionend", animationEnd);
+        el.classList.remove('animate');
+        resolve();
+      };
+      el.classList.add('animate');
+      requestAnimationFrame(_ => {
+        el.style.opacity = 0;
+      });
+      el.addEventListener("transitionend", animationEnd, true);
     });
   }
 
@@ -244,8 +219,8 @@
     let width = card.offsetWidth - 48;
     for (let key in data) {
       // check if a dialog already is opened
-      let id = 'el-' + key.replace(/\./g,'');
-      let exist = document.querySelector('#' + id);
+      const id = 'el-' + key.replace(/\./g,'');
+      const exist = document.querySelector('#' + id);
       if (exist) card.removeChild(exist);
       // create the new dialog
       let div = document.createElement('div');
@@ -293,9 +268,10 @@
         scaleFontFamily: "'Roboto', 'Noto', sans-serif",
         scaleFontSize: 10
       });
-      fadeIn(div);
-      let loader = document.querySelector('#loader');
-      if (loader.style.opacity !== 0) fadeOut(loader);
+      fadeIn(div).then(_ => {
+        let loader = document.querySelector('#loader');
+        if (loader.style.opacity !== 0) fadeOut(loader);
+      });
       canvasWrapper.addEventListener('click', e => {
         let totalDatapoints;
         socket.emit('count', key);
@@ -365,20 +341,28 @@
 //         });
 //         dialog.appendChild(previous);
         // create the canvas
-        let detailedCanvas = document.createElement('canvas');
+        const winHeight = window.innerHeight;
+        const detailedCanvas = document.createElement('canvas');
         detailedCanvas.width = window.innerWidth - (80 + 32 + scrollbarWidth());
-        detailedCanvas.height = 250;
+        detailedCanvas.height = (_ => {
+          if (winHeight < 450) {
+            return 150; 
+          } else {
+            return 250;
+          }
+        })();
         detailedCanvas.style.marginBottom = '16px';
         dialog.appendChild(detailedCanvas);
-        let centerH = Math.floor((window.innerHeight - 32) / 2);
-        let centerDH = Math.floor(450 / 2);
-        dialog.style.top = Math.floor(centerH - centerDH) + 'px';
-        dialog.style.left = '0px';
         // attach dialog to body
         body.appendChild(dialog);
+        const dialogTotalHeight = (dialog.offsetHeight + 48);
+        const centerH = Math.floor((winHeight - 32) / 2);
+        const centerDH = Math.floor(dialogTotalHeight / 2);
+        dialog.style.top = Math.floor(centerH - centerDH) + 'px';
+        dialog.style.left = '0px';
         // render the graph
         chartData.labels = returnTime(data[key]);
-        let detailedCTX = detailedCanvas.getContext("2d");
+        const detailedCTX = detailedCanvas.getContext("2d");
         let chart = new Chart(detailedCTX).Line(chartData, {
           animation: false,
           pointDot: false,
@@ -537,28 +521,38 @@
 
   // run the app
   window.onload = () => {
-    let buttons  = document.querySelectorAll('.button');
-    [].slice.call(buttons).forEach(button => {
-      button.PaperRipple = new PaperRipple();
-      button.appendChild(button.PaperRipple.$);
-      button.addEventListener('mousedown', ev => button.PaperRipple.downAction(ev));
-      button.addEventListener('mouseup', e => button.PaperRipple.upAction());
-    });
     positionThings();
     // fade card opacity
-    let reboot = document.querySelector('#reboot');
-    let rebootClose = document.querySelector('#reboot-dialog-close');
-    let rebootButton = document.querySelector('#reboot-dialog-reboot');
-    let appWrapper = document.querySelector('.wrapper');
-    // setup ripple for action fab
-    let fab = document.querySelector('#fab');
-    fab.PaperRipple = new PaperRipple();
-    fab.appendChild(fab.PaperRipple.$);
-    fab.PaperRipple.$.classList.add('paper-ripple--round');
-    fab.PaperRipple.recenters = true;
-    fab.PaperRipple.center = true;
-    fab.addEventListener('mousedown', ev => fab.PaperRipple.downAction(ev));
-    fab.addEventListener('mouseup', ev => fab.PaperRipple.upAction());
+    const reboot = document.querySelector('#reboot');
+    const rebootClose = document.querySelector('#reboot-dialog-close');
+    const rebootButton = document.querySelector('#reboot-dialog-reboot');
+    const appWrapper = document.querySelector('.wrapper');
+    const fab = document.querySelector('#fab');
+    
+    // load ripples
+    const ripples = document.createElement('script');
+    ripples.async = true;
+    ripples.src = 'js/paper-ripple.min.js';
+    ripples.onload = _ => {
+      const buttons  = document.querySelectorAll('.button');
+      [].slice.call(buttons).forEach(button => {
+        button.PaperRipple = new PaperRipple();
+        button.appendChild(button.PaperRipple.$);
+        button.addEventListener('mousedown', ev => button.PaperRipple.downAction(ev));
+        button.addEventListener('mouseup', e => button.PaperRipple.upAction());
+      });
+      
+      fab.PaperRipple = new PaperRipple();
+      fab.appendChild(fab.PaperRipple.$);
+      fab.PaperRipple.$.classList.add('paper-ripple--round');
+      fab.PaperRipple.recenters = true;
+      fab.PaperRipple.center = true;
+      fab.addEventListener('mousedown', ev => fab.PaperRipple.downAction(ev));
+      fab.addEventListener('mouseup', ev => fab.PaperRipple.upAction());
+    };
+    document.querySelector('body').appendChild(ripples);
+    
+    
     fab.addEventListener('click', () => animateScroll());
 
     let scrollPOS;
@@ -654,11 +648,11 @@
       openRebootDialog();
     });
     // close reboot dialog
-    rebootClose.addEventListener('click', e => closeRebootDialog().then(() => {
+    rebootClose.addEventListener('click', _ => closeRebootDialog().then(_ => {
       reboot.classList.remove('disabled-button');
     }));
     // close reboot dialog and reboot
-    rebootButton.addEventListener('click', e => closeRebootDialog().then(() => {
+    rebootButton.addEventListener('click', _ => closeRebootDialog().then(_ => {
       socket.emit('force-reboot');
     }));
   };
