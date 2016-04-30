@@ -1,6 +1,13 @@
 (_ => {
   'use strict';
   
+  /**
+   * Graphs !!!!!
+   *
+   * @param {Number} height
+   * @param {Number} width
+   * @param {String} pointerEvents   || defaults to auto  ** optional 
+   */
   class Graph {
     constructor(height, width, pointerEvents) {
       this.canvas = document.createElement('canvas');
@@ -9,10 +16,24 @@
       this.canvas.style.pointerEvents = pointerEvents || 'auto';
     }
     
+    /**
+     * append the canvas to a element
+     *
+     * @param {htmlElement} el 
+     */
     appendTo(el) {
       el.appendChild(this.canvas);
     }
     
+    /**
+     * draw data to the graph
+     *
+     * @param {String} host
+     * @param {Array} labels - labels for data points
+     * @param {Array} data - data for data points
+     * @param {Object} color - rbg color values
+     * @param {Boolean} tooltips - if tooltips will be used on graph
+     */
     drawGraph(host, labels, data, color, tooltips) {
       const ctx = this.canvas.getContext("2d");
       const chart = new Chart(ctx).Line({
@@ -35,6 +56,11 @@
       });
     }
   
+    /**
+     * returns the canvas HTML element
+     *
+     * used to style the element for animation setup
+     */
     returnElement() {
       return this.canvas;
     }
@@ -45,10 +71,11 @@
    * display a toast message
    *
    * @param {String} message
+   * @param {Number} timeout in seconds  || defualt 5 seconds  ** optional 
    */
   class Toast {
     constructor(message, _timeout) {
-      this._timeout = _timeout || 5000;
+      this._timeout = _timeout * 1000 || 5000;
       this.toast = document.createElement('div');
       this.toast.classList.add('toast');
       this.toast.classList.add('hidden');
@@ -73,7 +100,9 @@
     }
   }
   
-  
+  /**
+   * returns a material design icon buttonn
+   */
   class IconButton {
     constructor (icon) {
       const button = document.createElement('i');
@@ -159,7 +188,7 @@
     }
   }
 
-  function startProgress() {
+  function startRebootTimer() {
     return new Promise(resolve => {
       const wrapper = document.querySelector('.bar-wrapper');
       const bar = document.querySelector('#rebootProgress');
@@ -626,13 +655,15 @@
 
 
   function animateScroll() {
-    let wrapper = document.querySelector('.wrapper');
-    let card = document.querySelector('#card');
-    let fromTop = wrapper.scrollTop;
+    const wrapper = document.querySelector('.wrapper');
+    const card = document.querySelector('#card');
+    const fromTop = wrapper.scrollTop;
     let margin = 0;
+    const animationSeconds = 0.25;
+    const inc = Math.abs((fromTop / animationSeconds) / 60);
     card.style.willChange = 'transform';
     requestAnimationFrame(function step() {
-      margin += 40;
+      margin += inc;
       if (margin >= fromTop) {
         card.style.transform = 'none';
         card.style.willChange = 'initial';
@@ -646,12 +677,12 @@
 
   // redraw graphs on window reload
   let timer = 0;
-  window.onresize = () => {
+  window.onresize = _ => {
     if (timer) {
       clearTimeout(timer);
       timer = 0;
     }
-    timer = setTimeout(() => {
+    timer = setTimeout(_ => {
       graphData(appData);
       timer = 0;
     }, 100);
@@ -659,7 +690,7 @@
   };
 
   // run the app
-  window.onload = () => {
+  window.onload = _ => {
     positionThings();
     // fade card opacity
     const reboot = document.querySelector('#reboot');
@@ -717,9 +748,15 @@
         scrollPOS = scrollTop;
       });
     };
+    
+    
     // socket.io setup
     socket = io.connect(location.origin);
-    socket.on('connect', () => {
+    
+    /**
+     * socket connected
+     */
+    socket.on('connect', _ => {
       var led = document.querySelector('#statusIndicator');
       if (led.classList.contains('offline')) {
         requestAnimationFrame(() => {
@@ -728,7 +765,11 @@
         });
       }
     });
-    socket.on('disconnect', () => {
+
+    /**
+     * socket disconnected
+     */
+    socket.on('disconnect', _ => {
       var led = document.querySelector('#statusIndicator');
       let led2 = document.querySelector('#routerStatus');
       if (led.classList.contains('online')) {
@@ -744,10 +785,18 @@
         });
       }
     });
+
+    /**
+     * update main graphs with current data && update appData object
+     */
     socket.on('history', logs => sortHistory(logs).then(data => {
       appData = data;
       graphData(data);
     }));
+
+    /**
+     * update detaild graph 
+     */
     socket.on('log', log => {
       if (log.history.length) {
         const dialog = document.querySelector('#chartDialog');
@@ -766,6 +815,7 @@
           const forwardExist = dialog.querySelector('#forwardButton');
           if (forwardExist && forwardExist.classList.contains('icon-button-disabled'))
             forwardExist.classList.remove('icon-button-disabled');
+          
           if (!forwardExist) {
             const forward = new IconButton('arrow_forward');
             forward.id = 'forwardButton';
@@ -865,18 +915,37 @@
         });
       }
     });
+
+    /**
+     * update restarts data
+     */ 
     socket.on('restarts', logs => {
       if (lastRebootTimer) clearTimeout(lastRebootTimer);
       outputRestarts(logs)
     });
+
+    /**
+     * server sent a toast message
+     * 
+     * @param {String} message
+     */
     socket.on('toast', message => {
       if (message === 'rebooting router...') {
+        // ensure button is disabled 
         reboot.classList.add('disabled-button')
-        startProgress();
+        // start the animation
+        startRebootTimer();
       }
+      // enable button if router reboot has finished
       if (message === 'powering on router...') reboot.classList.remove('disabled-button');
       new Toast(message);
     });
+
+    /**
+     * update router status
+     *
+     * @param {Object} status
+     */
     socket.on('router-status', status => {
       let led = document.querySelector('#routerStatus');
       if (status.data.hasOwnProperty('time')) {
@@ -891,7 +960,10 @@
         led.classList.add('offline');
       }
     });
-    // open reboot dialog
+
+    /**
+     * open reboot dialog
+     */
     reboot.addEventListener('click', e => {
       if (e.target.classList.contains('disabled-button')) return;
       setTimeout(() => {
@@ -899,11 +971,17 @@
       }, 300);
       openRebootDialog();
     });
-    // close reboot dialog
+
+    /**
+     * close reboot dialog
+     */
     rebootClose.addEventListener('click', _ => closeRebootDialog().then(_ => {
       reboot.classList.remove('disabled-button');
     }));
-    // close reboot dialog and reboot
+
+    /**
+     * close reboot dialog and reboot
+     */
     rebootButton.addEventListener('click', _ => closeRebootDialog().then(_ => {
       socket.emit('force-reboot');
     }));
