@@ -1,4 +1,4 @@
-(() => {
+(_ => {
   'use strict';
   // object to store application data
   let appData = {};
@@ -18,9 +18,9 @@
    */
   function ago(time){
     if (time) {
-      var date = new Date(time);
-      var seconds = Math.floor((new Date() - date) / 1000);
-      var interval = Math.floor(seconds / 31536000);
+      const date = new Date(time);
+      const seconds = Math.floor((new Date() - date) / 1000);
+      let interval = Math.floor(seconds / 31536000);
       if (interval > 1) {
         return interval + " years ago";
       }
@@ -41,7 +41,7 @@
         return interval + " minutes ago";
       }
       if  (seconds < 10) {
-        return 'Just now';
+        return 'just now';
       }
       return Math.floor(seconds) + " seconds ago";
     }
@@ -205,35 +205,31 @@
     var inner = document.createElement('p');
     inner.style.width = "100%";
     inner.style.height = "200px";
-
     var outer = document.createElement('div');
     outer.style.position = "absolute";
     outer.style.top = "0px";
     outer.style.left = "0px";
-
     outer.style.visibility = "hidden";
     outer.style.width = "200px";
     outer.style.height = "150px";
     outer.style.overflow = "hidden";
     outer.appendChild (inner);
-
     document.body.appendChild (outer);
     var w1 = inner.offsetWidth;
     outer.style.overflow = 'scroll';
     var w2 = inner.offsetWidth;
     if (w1 == w2) w2 = outer.clientWidth;
-
     document.body.removeChild (outer);
-
     return (w1 - w2);
   }
 
 
   function getRandomColor() {
+    const threshold = 200;
     const r = (Math.floor(Math.random() * 256));
     const g = (Math.floor(Math.random() * 256));
     const b = (Math.floor(Math.random() * 256));
-    if (r > 230 && g > 230 && b > 230) {
+    if (r > threshold && g > threshold && b > threshold) {
       getRandomColor();
     } else {
       return {
@@ -290,7 +286,7 @@
       // create clickable area
       const canvasWrapper = document.createElement('div');
       canvasWrapper.classList.add('clickable');
-      canvasWrapper.dataset.rippleColor = "#673AB7"
+      canvasWrapper.style.position = 'relative';
       canvasWrapper.appendChild(canvas);
       div.appendChild(canvasWrapper);
       // send graph to the DOM
@@ -324,129 +320,132 @@
       fadeIn(div);
       const loader = document.querySelector('#loader');
       if (loader.style.opacity !== 0) fadeOut(loader);
-      canvasWrapper.addEventListener('click', e => {
+      canvasWrapper.addEventListener('click', _ => closeExistingGraph().then(_ => {
         page = 1;
-
-        closeExistingGraph().then(_ => {
-          const body = document.querySelector('body');
-          // create a new dialog
-          const dialog = document.createElement('div');
-          dialog.id = 'chartDialog';
-          dialog.classList.add('dialog');
-          const spaceBetween = document.createElement('div');
-          dialog.appendChild(spaceBetween);
-          spaceBetween.classList.add('flex');
-          spaceBetween.classList.add('space-between');
-          // create the text container
-          const textHeader = document.createElement('div');
-          spaceBetween.appendChild(textHeader);
-          const right = document.createElement('div');
-          const close = createIconButton('close');
-          close.style.color = 'red';
-          close.addEventListener('click', e => {
-            dialog.classList.remove('dialog-opened');
-            setTimeout(() => {
-              body.removeChild(dialog);
-            }, 400);
-          });
-          right.appendChild(close);
-          spaceBetween.appendChild(right);
-          // header text
-          const label = document.createElement('h2');
-          label.textContent = key;
-          textHeader.appendChild(label);
-          // highest ping
-          const highest = document.createElement('div');
-          highest.textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
-          highest.classList.add('high-low-text');
-          textHeader.appendChild(highest);
-          // lowest ping
-          const lowest = document.createElement('div');
-          lowest.textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
-          lowest.classList.add('high-low-text');
-          textHeader.appendChild(lowest);
-
-          // box for buttons to navigate back and forwards through data
-          const buttonBar = document.createElement('div');
-          buttonBar.classList.add('flex');
-          buttonBar.classList.add('space-between');
-          const back = document.createElement('div');
-          back.id = 'backB';
-          const forward = document.createElement('div');
-          forward.id = 'forwardB';
-          buttonBar.appendChild(back);
-          buttonBar.appendChild(forward)
-          dialog.appendChild(buttonBar);
-
-          // create the canvas
-          const winHeight = window.innerHeight;
-          const detailedCanvas = document.createElement('canvas');
-          detailedCanvas.width = window.innerWidth - (80 + 32 + scrollbarWidth());
-          detailedCanvas.height = (_ => {
-            if (winHeight < 450) {
-              return 125;
-            } else {
-              return 250;
-            }
-          })();
-          detailedCanvas.style.marginBottom = '16px';
-          dialog.appendChild(detailedCanvas);
-
-          // send dialog to DOM
-          body.appendChild(dialog);
-
-          // position the dialog
-          const dialogTotalHeight = (dialog.offsetHeight + 48);
-          const centerH = Math.floor((winHeight - 32) / 2);
-          const centerDH = Math.floor(dialogTotalHeight / 2);
-          dialog.style.top = Math.floor(centerH - centerDH) + 'px';
-          dialog.style.left = '0px';
-
-          // set detailed graph
-          chartData.labels = returnLocaleTime(data[key]);
-          const detailedCTX = detailedCanvas.getContext("2d");
-          let chart = new Chart(detailedCTX).Line(chartData, {
-            animation: false,
-            pointDot: false,
-            showTooltips: (() => {
-              if (window.innerWidth < 400) return false;
-              return true;
-            })(),
-            scaleLabel: "<%=value%> ms",
-            scaleFontFamily: "'Roboto', 'Noto', sans-serif",
-            scaleFontSize: 10
-          });
-          // open the dialog
+        const body = document.querySelector('body');
+        // create a new dialog
+        const dialog = document.createElement('div');
+        dialog.id = 'chartDialog';
+        dialog.classList.add('dialog');
+        const loading = createLoadingElement();
+        loading.id = 'graphDialogLoader';
+        dialog.appendChild(loading);
+        const spaceBetween = document.createElement('div');
+        dialog.appendChild(spaceBetween);
+        spaceBetween.classList.add('flex');
+        spaceBetween.classList.add('space-between');
+        // create the text container
+        const textHeader = document.createElement('div');
+        spaceBetween.appendChild(textHeader);
+        const right = document.createElement('div');
+        const close = createIconButton('close');
+        close.style.color = 'red';
+        close.addEventListener('click', e => {
+          dialog.classList.remove('dialog-opened');
           setTimeout(() => {
-            dialog.classList.add('dialog-opened');
-          }, 100);
-          socket.emit('count', key);
-          socket.on('count', count => {
-            dataPoints = count.count;
-            maxPage = count.count / appData[count.host].length;
-            if (count.count > appData[count.host].length) {
-              // previous button
-              const previous = createIconButton('arrow_back');
-              previous.id = 'previousButton';
-              previous.addEventListener('click', e => {
-                const limit = data[key].length;
-                page++;
-                socket.emit('log', {
-                  host: key,
-                  limit: limit,
-                  skip: count.count - (limit * page),
-                  color: {
-                    r: r,
-                    g:g,
-                    b:b
-                  }
-                });
-              });
-              back.appendChild(previous);
-            }
-          });      
+            body.removeChild(dialog);
+          }, 400);
         });
-      });
+        right.appendChild(close);
+        spaceBetween.appendChild(right);
+        // header text
+        const label = document.createElement('h2');
+        label.textContent = key;
+        textHeader.appendChild(label);
+        // highest ping
+        const highest = document.createElement('div');
+        highest.textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
+        highest.classList.add('high-low-text');
+        textHeader.appendChild(highest);
+        // lowest ping
+        const lowest = document.createElement('div');
+        lowest.textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
+        lowest.classList.add('high-low-text');
+        textHeader.appendChild(lowest);
+
+        // box for buttons to navigate back and forwards through data
+        const buttonBar = document.createElement('div');
+        buttonBar.classList.add('flex');
+        buttonBar.classList.add('space-between');
+        const back = document.createElement('div');
+        back.id = 'backB';
+        const forward = document.createElement('div');
+        forward.id = 'forwardB';
+        buttonBar.appendChild(back);
+        buttonBar.appendChild(forward)
+        dialog.appendChild(buttonBar);
+
+        // create the canvas
+        const winHeight = window.innerHeight;
+        const detailedCanvas = document.createElement('canvas');
+        detailedCanvas.width = window.innerWidth - (80 + 32 + scrollbarWidth());
+        detailedCanvas.height = (_ => {
+          if (winHeight < 450) {
+            return 125;
+          } else {
+            return 250;
+          }
+        })();
+        detailedCanvas.style.marginBottom = '16px';
+        dialog.appendChild(detailedCanvas);
+
+        // send dialog to DOM
+        body.appendChild(dialog);
+
+        // position the dialog
+        const dialogTotalHeight = (dialog.offsetHeight + 48);
+        const centerH = Math.floor((winHeight - 32) / 2);
+        const centerDH = Math.floor(dialogTotalHeight / 2);
+        dialog.style.top = Math.floor(centerH - centerDH) + 'px';
+        dialog.style.left = '0px';
+
+        // set detailed graph
+        chartData.labels = returnLocaleTime(data[key]);
+        const detailedCTX = detailedCanvas.getContext("2d");
+        let chart = new Chart(detailedCTX).Line(chartData, {
+          animation: false,
+          pointDot: false,
+          showTooltips: (() => {
+            if (window.innerWidth < 400) return false;
+            return true;
+          })(),
+          scaleLabel: "<%=value%> ms",
+          scaleFontFamily: "'Roboto', 'Noto', sans-serif",
+          scaleFontSize: 10
+        });
+        // open the dialog
+        setTimeout(() => {
+          dialog.classList.add('dialog-opened');
+        }, 100);
+        socket.emit('count', key);
+        socket.on('count', count => {
+          dataPoints = count.count;
+          maxPage = count.count / appData[count.host].length;
+          if (count.count > appData[count.host].length) {
+            // previous button
+            const previous = createIconButton('arrow_back');
+            previous.id = 'previousButton';
+            previous.addEventListener('click', e => {
+              fadeIn(document.querySelector('#graphDialogLoader'));
+              if (previous.classList.contains('icon-button-disabled')) return;
+              previous.classList.add('icon-button-disabled')
+              const limit = data[key].length;
+              page++;
+              socket.emit('log', {
+                host: key,
+                limit: limit,
+                skip: count.count - (limit * page),
+                color: {
+                  r: r,
+                  g: g,
+                  b: b
+                }
+              });
+            });
+            back.appendChild(previous);
+          }
+        });
+      }));
     }
   }
 
@@ -597,6 +596,25 @@
   }
 
 
+  function createLoadingElement() {
+    const wrapper = document.createElement('div');
+    wrapper.classList.add('loader');
+    const centered = document.createElement('div');
+    wrapper.appendChild(centered);
+    centered.textContent = 'Loading...';
+    const barWrapper = document.createElement('div');
+    barWrapper.classList.add('bar-wrapper');
+    barWrapper.style.display = 'block';
+    barWrapper.style.width = '250px';
+    const bar = document.createElement('div');
+    bar.classList.add('load-bar');
+    barWrapper.appendChild(bar);
+    centered.appendChild(barWrapper);
+    wrapper.style.opacity = 0;
+    return wrapper;
+  }
+
+
   // redraw graphs on window reload
   let timer = 0;
   window.onresize = () => {
@@ -714,84 +732,107 @@
             return 250;
           }
         })();
-        dialog.removeChild(oldCanvas);
-        dialog.appendChild(newCanvas);
-        const graphData = returnData(log.history);
-        const texts = dialog.querySelectorAll('.high-low-text');
-        texts[0].textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
-        texts[1].textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
-
-        const forwardExist = dialog.querySelector('#forwardButton');
-        if (!forwardExist) {
-          const forward = createIconButton('arrow_forward');
-          forward.id = 'forwardButton';
-          forward.addEventListener('click', e => {
-            const limit = log.history.length;
-            page--;
-            socket.emit('log', {
-              host: log.host,
-              limit: limit,
-              skip: dataPoints - (limit * page),
-              color: {
-                r: log.color.r,
-                g: log.color.g,
-                b: log.color.b
-              }
+        newCanvas.style.opacity = 0;
+        fadeOut(oldCanvas).then(_ => {
+          dialog.removeChild(oldCanvas);
+          dialog.appendChild(newCanvas);
+          const graphData = returnData(log.history);
+          const texts = dialog.querySelectorAll('.high-low-text');
+          texts[0].textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
+          texts[1].textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
+          // work with buttons
+          const forwardExist = dialog.querySelector('#forwardButton');
+          if (forwardExist && forwardExist.classList.contains('icon-button-disabled'))
+            forwardExist.classList.remove('icon-button-disabled');
+          if (!forwardExist) {
+            const forward = createIconButton('arrow_forward');
+            forward.id = 'forwardButton';
+            forward.addEventListener('click', e => {
+              fadeIn(document.querySelector('#graphDialogLoader'));
+              if (forward.classList.contains('icon-button-disabled')) return;
+              forward.classList.add('icon-button-disabled');
+              const limit = log.history.length;
+              page--;
+              socket.emit('log', {
+                host: log.host,
+                limit: limit,
+                skip: dataPoints - (limit * page),
+                color: {
+                  r: log.color.r,
+                  g: log.color.g,
+                  b: log.color.b
+                }
+              });
             });
-          });
-          dialog.querySelector('#forwardB').appendChild(forward);
-        }
-        const prevExist = dialog.querySelector('#previousButton');
-        if (!prevExist) {
-          // previous button
-          const previous = createIconButton('arrow_back');
-          previous.id = 'previousButton';
-          previous.addEventListener('click', e => {
-            const limit = log.history.length;
-            page++;
-            socket.emit('log', {
-              host: log.host,
-              limit: limit,
-              skip: dataPoints - (limit * page),
-              color: {
-                r: log.color.r,
-                g: log.color.g,
-                b: log.color.b
-              }
-            });
-          });
-          dialog.querySelector('#backB').appendChild(previous);
-        }
-        if (page >= Math.floor(maxPage)) {
-          const prev = document.querySelector('#previousButton');
-          prev.parentNode.removeChild(prev);
-        }
-        if (page === 1) {
-          forwardExist.parentNode.removeChild(forwardExist);
-        }
+            forward.style.opacity = 0;
+            dialog.querySelector('#forwardB').appendChild(forward);
+            fadeIn(forward);
+          }
 
-        const chartData = {
-          labels: returnLocaleTime(log.history),
-          datasets: [
-            {
-              label: log.host + " Ping",
-              fillColor: 'rgba(' + log.color.r + ',' + log.color.g + ',' + log.color.b + ', 0.1)',
-              strokeColor: 'rgba(' + log.color.r + ',' + log.color.g + ',' + log.color.b + ', 1)',
-              data: graphData
-            }
-          ]
-        };
-        const ctx = newCanvas.getContext("2d");
-        const chart = new Chart(ctx).Line(chartData, {
-          animation: false,
-          pointDot: false,
-          showTooltips: (_ => {
-            if (window.innerWidth < 400) return false;
-            return true;
-          })(),
-          scaleLabel: "<%=value%> ms",
-          scaleFontFamily: "'Roboto', 'Noto', sans-serif",
-          scaleFontSize: 10
+
+          const prevExist = dialog.querySelector('#previousButton');
+          if (prevExist && prevExist.classList.contains('icon-button-disabled'))
+            prevExist.classList.remove('icon-button-disabled');
+
+          if (!prevExist) {
+            // previous button
+            const previous = createIconButton('arrow_back');
+            previous.id = 'previousButton';
+            previous.addEventListener('click', e => {
+              fadeIn(document.querySelector('#graphDialogLoader'));
+              if (previous.classList.contains('icon-button-disabled')) return;
+              previous.classList.add('icon-button-disabled');
+              const limit = log.history.length;
+              page++;
+              socket.emit('log', {
+                host: log.host,
+                limit: limit,
+                skip: dataPoints - (limit * page),
+                color: {
+                  r: log.color.r,
+                  g: log.color.g,
+                  b: log.color.b
+                }
+              });
+            });
+            previous.style.opacity = 0;
+            dialog.querySelector('#backB').appendChild(previous);
+            fadeIn(previous);
+          }
+
+          if (page >= Math.floor(maxPage)) {
+            fadeOut(prevExist).then(_ => prevExist.parentNode.removeChild(prevExist));
+          }
+
+          if (page === 1) {
+            fadeOut(forwardExist).then(_ => forwardExist.parentNode.removeChild(forwardExist));
+          }
+          fadeOut(document.querySelector('#graphDialogLoader'));
+          // stamp data to the new canvas
+          const chartData = {
+            labels: returnLocaleTime(log.history),
+            datasets: [
+              {
+                label: log.host + " Ping",
+                fillColor: 'rgba(' + log.color.r + ',' + log.color.g + ',' + log.color.b + ', 0.1)',
+                strokeColor: 'rgba(' + log.color.r + ',' + log.color.g + ',' + log.color.b + ', 1)',
+                data: graphData
+              }
+            ]
+          };
+          const ctx = newCanvas.getContext("2d");
+          const chart = new Chart(ctx).Line(chartData, {
+            animation: false,
+            pointDot: false,
+            showTooltips: (_ => {
+              if (window.innerWidth < 400) return false;
+              return true;
+            })(),
+            scaleLabel: "<%=value%> ms",
+            scaleFontFamily: "'Roboto', 'Noto', sans-serif",
+            scaleFontSize: 10
+          });
+          fadeIn(newCanvas);
         });
       }
     });

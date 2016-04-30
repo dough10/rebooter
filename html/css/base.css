@@ -42,26 +42,6 @@ body {
   margin-left: 4px;
   display: inline-block;
 }
-.shadowTop {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow: 0 17px 17px 0 rgba(0, 0, 0, 0.15);
-}
-.shadowBottom {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow: 0 27px 55px 0 rgba(0, 0, 0, 0.3);
-}
 .flex {
   display: flex;
 }
@@ -264,13 +244,13 @@ body {
 .clickable:active {
   background: rgba(0, 0, 0, 0.1);
 }
-#loader {
+.loader {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: #fff;
+  background: rgba(255,255,255,0.6);
   justify-content: center;
   display: flex;
   align-items: center;
@@ -291,4 +271,9 @@ body {
 .animate {
   will-change: opacity;
   transition: opacity .5s ease-in-out;
+}
+.icon-button-disabled {
+  cursor: auto;
+  pointer-events: none;
+  color: #ccc;
 }
