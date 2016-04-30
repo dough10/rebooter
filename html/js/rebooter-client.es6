@@ -1,5 +1,117 @@
 (_ => {
   'use strict';
+  
+  class Graph {
+    constructor(height, width, pointerEvents) {
+      this.canvas = document.createElement('canvas');
+      this.canvas.width = width;
+      this.canvas.height = height;
+      this.canvas.style.pointerEvents = pointerEvents || 'auto';
+    }
+    
+    appendTo(el) {
+      el.appendChild(this.canvas);
+    }
+    
+    drawGraph(host, labels, data, color, tooltips) {
+      const ctx = this.canvas.getContext("2d");
+      const chart = new Chart(ctx).Line({
+        labels: labels,
+        datasets: [
+          {
+            label: host + " Ping",
+            fillColor: 'rgba(' + color.r + ',' + color.g + ',' + color.b + ', 0.1)',
+            strokeColor: 'rgba(' + color.r + ',' + color.g + ',' + color.b + ', 1)',
+            data: data
+          }
+        ]
+      }, {
+        animation: false,
+        pointDot: false,
+        showTooltips: tooltips,
+        scaleLabel: "<%=value%> ms",
+        scaleFontFamily: "'Roboto', 'Noto', sans-serif",
+        scaleFontSize: 10
+      });
+    }
+  
+    returnElement() {
+      return this.canvas;
+    }
+  }
+ 
+ 
+  /**
+   * display a toast message
+   *
+   * @param {String} message
+   */
+  class Toast {
+    constructor(message, _timeout) {
+      this._timeout = _timeout || 5000;
+      this.toast = document.createElement('div');
+      this.toast.classList.add('toast');
+      this.toast.classList.add('hidden');
+      this.toast.id = 'toast';
+      this.toast.style.willChange = 'opacity';
+      this.toast.addEventListener('transitionend', this.transitionEnd.bind(this), true);
+      this.toast.textContent = message;
+      document.querySelector('body').appendChild(this.toast);
+      setTimeout(_ => {
+        this.toast.classList.remove('hidden');
+      }, 50);
+    }
+    
+    transitionEnd() {
+      setTimeout(_ => {
+        this.toast.addEventListener('transitionend', _ => {
+          document.querySelector('body').removeChild(this.toast);
+        });
+        this.toast.classList.add('hidden');
+      }, this._timeout);
+      this.toast.removeEventListener('transitionend', this.transitionEnd.bind(this));
+    }
+  }
+  
+  
+  class IconButton {
+    constructor (icon) {
+      const button = document.createElement('i');
+      button.classList.add('material-icons');
+      button.textContent = icon;
+      button.classList.add('icon-button')
+      button.PaperRipple = new PaperRipple();
+      button.appendChild(button.PaperRipple.$);
+      button.PaperRipple.$.classList.add('paper-ripple--round');
+      button.PaperRipple.recenters = true;
+      button.PaperRipple.center = true;
+      button.addEventListener('mousedown', ev => button.PaperRipple.downAction(ev));
+      button.addEventListener('mouseup', ev => button.PaperRipple.upAction());
+      return button;
+    }
+  }
+
+  class LoadingElement {
+    constructor () {
+      const wrapper = document.createElement('div');
+      wrapper.classList.add('loader');
+      const centered = document.createElement('div');
+      wrapper.appendChild(centered);
+      centered.textContent = 'Loading...';
+      const barWrapper = document.createElement('div');
+      barWrapper.classList.add('bar-wrapper');
+      barWrapper.style.display = 'block';
+      barWrapper.style.width = '250px';
+      const bar = document.createElement('div');
+      bar.classList.add('load-bar');
+      barWrapper.appendChild(bar);
+      centered.appendChild(barWrapper);
+      wrapper.style.opacity = 0;
+      return wrapper;
+    }
+  }
+
+  
   // object to store application data
   let appData = {};
 
@@ -145,30 +257,35 @@
     }
     return output;
   }
-  /**
-   * return a array of ping entry times
-   *
-   * @param {Array} array
-   */
-  function returnTime(array) {
-    let output = [];
-    let len = array.length;
-    for (let i = 0; i < len; i++) {
-      output.push(new Date(array[i].time).toLocaleTimeString());
-    }
-    return output;
-  }
 
   /**
    * return a array of ping entry times
    *
    * @param {Array} array
    */
-  function returnLocaleTime(array) {
+  function returnLabels(array) {
     let output = [];
     let len = array.length;
     for (let i = 0; i < len; i++) {
-      output.push(new Date(array[i].time).toLocaleString());
+      output.push((_ => {
+        if (window.innerHeight < 500) {
+          return '';
+        } else if (window.innerWidth < 700) {
+          switch (true) {
+            case (i === 0):
+              return new Date(array[i].time).toLocaleTimeString();
+              break;
+            case (i === len - 1):
+              return new Date(array[i].time).toLocaleTimeString();
+              break;
+            default:
+              return '';
+              break;
+          }
+        } else {
+          return new Date(array[i].time).toLocaleString();
+        }
+      })());
     }
     return output;
   }
@@ -226,11 +343,18 @@
 
   function getRandomColor() {
     const threshold = 200;
-    const r = (Math.floor(Math.random() * 256));
-    const g = (Math.floor(Math.random() * 256));
-    const b = (Math.floor(Math.random() * 256));
+    let r = (Math.floor(Math.random() * 256));
+    let g = (Math.floor(Math.random() * 256));
+    let b = (Math.floor(Math.random() * 256));
     if (r > threshold && g > threshold && b > threshold) {
-      getRandomColor();
+      r = (Math.floor(Math.random() * 256));
+      g = (Math.floor(Math.random() * 256));
+      b = (Math.floor(Math.random() * 256));
+      return {
+        r: r,
+        g: g,
+        b: b
+      };
     } else {
       return {
         r: r,
@@ -279,44 +403,20 @@
       text.textContent = key;
       div.appendChild(text);
       // create canvas
-      const canvas = document.createElement('canvas');
-      canvas.width = card.offsetWidth - 48;
-      canvas.height = 100;
-      canvas.style.pointerEvents = 'none';
+      const canvas = new Graph(100, card.offsetWidth - 48, 'none');
       // create clickable area
       const canvasWrapper = document.createElement('div');
+      //canvasWrapper.appendChild(canvas);
       canvasWrapper.classList.add('clickable');
       canvasWrapper.style.position = 'relative';
-      canvasWrapper.appendChild(canvas);
       div.appendChild(canvasWrapper);
       // send graph to the DOM
       card.appendChild(div);
       // generate graph data
       const graphData = returnData(data[key]);
-      const color = getRandomColor();
-      const r = color.r;
-      const g = color.g;
-      const b = color.b;
-      const chartData = {
-        labels: returnBlankLabel(data[key]),
-        datasets: [
-          {
-            label: key + " Ping",
-            fillColor: 'rgba(' + r + ',' + g + ',' + b + ', 0.1)',
-            strokeColor: 'rgba(' + r + ',' + g + ',' + b + ', 1)',
-            data: graphData
-          }
-        ]
-      };
-      const ctx = canvas.getContext("2d");
-      const chart = new Chart(ctx).Line(chartData, {
-        animation: false,
-        pointDot: false,
-        showTooltips: false,
-        scaleLabel: "<%=value%> ms",
-        scaleFontFamily: "'Roboto', 'Noto', sans-serif",
-        scaleFontSize: 10
-      });
+      const graphColor = getRandomColor();
+      canvas.appendTo(canvasWrapper);
+      canvas.drawGraph(key, returnBlankLabel(data[key]), graphData, graphColor, false);
       fadeIn(div);
       const loader = document.querySelector('#loader');
       if (loader.style.opacity !== 0) fadeOut(loader);
@@ -327,7 +427,7 @@
         const dialog = document.createElement('div');
         dialog.id = 'chartDialog';
         dialog.classList.add('dialog');
-        const loading = createLoadingElement();
+        const loading = new LoadingElement();
         loading.id = 'graphDialogLoader';
         dialog.appendChild(loading);
         const spaceBetween = document.createElement('div');
@@ -338,7 +438,7 @@
         const textHeader = document.createElement('div');
         spaceBetween.appendChild(textHeader);
         const right = document.createElement('div');
-        const close = createIconButton('close');
+        const close = new IconButton('close');
         close.style.color = 'red';
         close.addEventListener('click', e => {
           dialog.classList.remove('dialog-opened');
@@ -376,43 +476,28 @@
         dialog.appendChild(buttonBar);
 
         // create the canvas
-        const winHeight = window.innerHeight;
-        const detailedCanvas = document.createElement('canvas');
-        detailedCanvas.width = window.innerWidth - (80 + 32 + scrollbarWidth());
-        detailedCanvas.height = (_ => {
-          if (winHeight < 450) {
+        const detailedCanvas = new Graph((_ => {
+          if (window.innerHeight < 450) {
             return 125;
           } else {
             return 250;
           }
-        })();
-        detailedCanvas.style.marginBottom = '16px';
-        dialog.appendChild(detailedCanvas);
-
+        })(), window.innerWidth - (80 + 32 + scrollbarWidth()));
+        detailedCanvas.appendTo(dialog);
         // send dialog to DOM
         body.appendChild(dialog);
-
         // position the dialog
         const dialogTotalHeight = (dialog.offsetHeight + 48);
-        const centerH = Math.floor((winHeight - 32) / 2);
+        const centerH = Math.floor((window.innerHeight - 32) / 2);
         const centerDH = Math.floor(dialogTotalHeight / 2);
         dialog.style.top = Math.floor(centerH - centerDH) + 'px';
         dialog.style.left = '0px';
 
-        // set detailed graph
-        chartData.labels = returnLocaleTime(data[key]);
-        const detailedCTX = detailedCanvas.getContext("2d");
-        let chart = new Chart(detailedCTX).Line(chartData, {
-          animation: false,
-          pointDot: false,
-          showTooltips: (() => {
-            if (window.innerWidth < 400) return false;
-            return true;
-          })(),
-          scaleLabel: "<%=value%> ms",
-          scaleFontFamily: "'Roboto', 'Noto', sans-serif",
-          scaleFontSize: 10
-        });
+        // draw the detailed graph
+        detailedCanvas.drawGraph(key, returnLabels(data[key]), graphData, graphColor, (() => {
+          if (window.innerWidth < 400) return false;
+          return true;
+        })());
         // open the dialog
         setTimeout(() => {
           dialog.classList.add('dialog-opened');
@@ -423,25 +508,29 @@
           maxPage = count.count / appData[count.host].length;
           if (count.count > appData[count.host].length) {
             // previous button
-            const previous = createIconButton('arrow_back');
+            const previous = new IconButton('arrow_back');
             previous.id = 'previousButton';
             previous.addEventListener('click', e => {
+              // early return if button is disabled
+              if (previous.classList.contains('icon-button-disabled')) return;
+              // disable the button
+              previous.classList.add('icon-button-disabled')
+              // show the loading screen
               const graphLoader = document.querySelector('#graphDialogLoader');
               graphLoader.style.pointerEvents = 'auto';
-              fadeIn(graphLoader);
-              if (previous.classList.contains('icon-button-disabled')) return;
-              previous.classList.add('icon-button-disabled')
-              const limit = data[key].length;
-              page++;
-              socket.emit('log', {
-                host: key,
-                limit: limit,
-                skip: count.count - (limit * page),
-                color: {
-                  r: r,
-                  g: g,
-                  b: b
-                }
+              fadeIn(graphLoader).then(_ => {
+                const limit = data[key].length;
+                page++;
+                socket.emit('log', {
+                  host: key,
+                  limit: limit,
+                  skip: count.count - (limit * page),
+                  color: {
+                    r: graphColor.r,
+                    g: graphColor.g,
+                    b: graphColor.b
+                  }
+                });
               });
             });
             back.appendChild(previous);
@@ -471,32 +560,6 @@
     });
   }
 
-  /**
-   * display a toast message
-   */
-  function showToast(text, _timeout) {
-    const toast = document.createElement('div');
-    const transitionEnd = _ => {
-      setTimeout(_ => {
-        toast.addEventListener('transitionend', _ => {
-          document.querySelector('body').removeChild(toast);
-        });
-        toast.classList.add('hidden');
-      }, _timeout || 5000);
-      toast.removeEventListener('transitionend', transitionEnd);
-      toast.style.willChange = 'initial';
-    };
-    toast.classList.add('toast');
-    toast.classList.add('hidden');
-    toast.style.willChange = 'opacity';
-    toast.id = 'toast'
-    toast.textContent = text;
-    document.querySelector('body').appendChild(toast);
-    setTimeout(_ => {
-      toast.classList.remove('hidden');
-      toast.addEventListener('transitionend', transitionEnd, true);
-    }, 50);
-  }
 
   /**
    * position placement of restart dialog
@@ -580,42 +643,6 @@
       requestAnimationFrame(step);
     });
   }
-
-
-  function createIconButton(icon) {
-    const button = document.createElement('i');
-    button.classList.add('material-icons');
-    button.textContent = icon;
-    button.classList.add('icon-button')
-    button.PaperRipple = new PaperRipple();
-    button.appendChild(button.PaperRipple.$);
-    button.PaperRipple.$.classList.add('paper-ripple--round');
-    button.PaperRipple.recenters = true;
-    button.PaperRipple.center = true;
-    button.addEventListener('mousedown', ev => button.PaperRipple.downAction(ev));
-    button.addEventListener('mouseup', ev => button.PaperRipple.upAction());
-    return button;
-  }
-
-
-  function createLoadingElement() {
-    const wrapper = document.createElement('div');
-    wrapper.classList.add('loader');
-    const centered = document.createElement('div');
-    wrapper.appendChild(centered);
-    centered.textContent = 'Loading...';
-    const barWrapper = document.createElement('div');
-    barWrapper.classList.add('bar-wrapper');
-    barWrapper.style.display = 'block';
-    barWrapper.style.width = '250px';
-    const bar = document.createElement('div');
-    bar.classList.add('load-bar');
-    barWrapper.appendChild(bar);
-    centered.appendChild(barWrapper);
-    wrapper.style.opacity = 0;
-    return wrapper;
-  }
-
 
   // redraw graphs on window reload
   let timer = 0;
@@ -725,47 +752,44 @@
       if (log.history.length) {
         const dialog = document.querySelector('#chartDialog');
         const oldCanvas = dialog.querySelector('canvas');
-        const newCanvas = document.createElement('canvas');
-        newCanvas.width = window.innerWidth - (80 + 32 + scrollbarWidth());
-        newCanvas.height = (_ => {
-          if (window.innerHeight < 450) {
-            return 125;
-          } else {
-            return 250;
-          }
-        })();
-        newCanvas.style.opacity = 0;
         fadeOut(oldCanvas).then(_ => {
           dialog.removeChild(oldCanvas);
-          dialog.appendChild(newCanvas);
+          
           const graphData = returnData(log.history);
+          
+          // output pings
           const texts = dialog.querySelectorAll('.high-low-text');
           texts[0].textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
           texts[1].textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
+          
           // work with buttons
           const forwardExist = dialog.querySelector('#forwardButton');
           if (forwardExist && forwardExist.classList.contains('icon-button-disabled'))
             forwardExist.classList.remove('icon-button-disabled');
           if (!forwardExist) {
-            const forward = createIconButton('arrow_forward');
+            const forward = new IconButton('arrow_forward');
             forward.id = 'forwardButton';
             forward.addEventListener('click', e => {
+              // early return if button is disabled
+              if (forward.classList.contains('icon-button-disabled')) return;
+              // disable the button
+              forward.classList.add('icon-button-disabled');
+              // show the loading screen
               const graphLoader = document.querySelector('#graphDialogLoader');
               graphLoader.style.pointerEvents = 'auto';
-              fadeIn(graphLoader);
-              if (forward.classList.contains('icon-button-disabled')) return;
-              forward.classList.add('icon-button-disabled');
-              const limit = log.history.length;
-              page--;
-              socket.emit('log', {
-                host: log.host,
-                limit: limit,
-                skip: dataPoints - (limit * page),
-                color: {
-                  r: log.color.r,
-                  g: log.color.g,
-                  b: log.color.b
-                }
+              fadeIn(graphLoader).then(_ => {
+                const limit = log.history.length;
+                page--;
+                socket.emit('log', {
+                  host: log.host,
+                  limit: limit,
+                  skip: dataPoints - (limit * page),
+                  color: {
+                    r: log.color.r,
+                    g: log.color.g,
+                    b: log.color.b
+                  }
+                });
               });
             });
             forward.style.opacity = 0;
@@ -780,25 +804,29 @@
 
           if (!prevExist) {
             // previous button
-            const previous = createIconButton('arrow_back');
+            const previous = new IconButton('arrow_back');
             previous.id = 'previousButton';
             previous.addEventListener('click', e => {
+              // early return if button is disabled
+              if (previous.classList.contains('icon-button-disabled')) return;
+              // disable the button
+              previous.classList.add('icon-button-disabled');
+              // show the loading screen
               const graphLoader = document.querySelector('#graphDialogLoader');
               graphLoader.style.pointerEvents = 'auto';
-              fadeIn(graphLoader);
-              if (previous.classList.contains('icon-button-disabled')) return;
-              previous.classList.add('icon-button-disabled');
-              const limit = log.history.length;
-              page++;
-              socket.emit('log', {
-                host: log.host,
-                limit: limit,
-                skip: dataPoints - (limit * page),
-                color: {
-                  r: log.color.r,
-                  g: log.color.g,
-                  b: log.color.b
-                }
+              fadeIn(graphLoader).then(_ => {
+                const limit = log.history.length;
+                page++;
+                socket.emit('log', {
+                  host: log.host,
+                  limit: limit,
+                  skip: dataPoints - (limit * page),
+                  color: {
+                    r: log.color.r,
+                    g: log.color.g,
+                    b: log.color.b
+                  }
+                });              
               });
             });
             previous.style.opacity = 0;
@@ -813,34 +841,27 @@
           if (page === 1) {
             fadeOut(forwardExist).then(_ => forwardExist.parentNode.removeChild(forwardExist));
           }
+          const newCanvas = new Graph((_ => {
+            if (window.innerHeight < 450) {
+              return 125;
+            } else {
+              return 250;
+            }
+          })(), window.innerWidth - (80 + 32 + scrollbarWidth()));
+          newCanvas.appendTo(dialog);
+          // stamp data to the new canvas
+          newCanvas.drawGraph(log.host, returnLabels(log.history), graphData, log.color, (_ => {
+            if (window.innerWidth < 400) return false;
+            return true;
+          })());
+          
+          // set up final transition
+          const newCanvasElement = newCanvas.returnElement();
+          newCanvasElement.style.opacity = 0;
           const graphLoader = document.querySelector('#graphDialogLoader');
           graphLoader.style.pointerEvents = 'none';
+          fadeIn(newCanvasElement);
           fadeOut(graphLoader);
-          // stamp data to the new canvas
-          const chartData = {
-            labels: returnLocaleTime(log.history),
-            datasets: [
-              {
-                label: log.host + " Ping",
-                fillColor: 'rgba(' + log.color.r + ',' + log.color.g + ',' + log.color.b + ', 0.1)',
-                strokeColor: 'rgba(' + log.color.r + ',' + log.color.g + ',' + log.color.b + ', 1)',
-                data: graphData
-              }
-            ]
-          };
-          const ctx = newCanvas.getContext("2d");
-          const chart = new Chart(ctx).Line(chartData, {
-            animation: false,
-            pointDot: false,
-            showTooltips: (_ => {
-              if (window.innerWidth < 400) return false;
-              return true;
-            })(),
-            scaleLabel: "<%=value%> ms",
-            scaleFontFamily: "'Roboto', 'Noto', sans-serif",
-            scaleFontSize: 10
-          });
-          fadeIn(newCanvas);
         });
       }
     });
@@ -854,7 +875,7 @@
         startProgress();
       }
       if (message === 'powering on router...') reboot.classList.remove('disabled-button');
-      showToast(message);
+      new Toast(message);
     });
     socket.on('router-status', status => {
       let led = document.querySelector('#routerStatus');

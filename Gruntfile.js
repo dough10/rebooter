@@ -27,7 +27,8 @@ module.exports = function(grunt) {
         sourceMap: true,
         plugins: [
           "transform-es2015-arrow-functions",
-          "transform-es2015-block-scoping"
+          "transform-es2015-block-scoping",
+          "transform-es2015-classes"
         ]
       },
       build: {
