@@ -426,7 +426,9 @@
             const previous = createIconButton('arrow_back');
             previous.id = 'previousButton';
             previous.addEventListener('click', e => {
-              fadeIn(document.querySelector('#graphDialogLoader'));
+              const graphLoader = document.querySelector('#graphDialogLoader');
+              graphLoader.style.pointerEvents = 'auto';
+              fadeIn(graphLoader);
               if (previous.classList.contains('icon-button-disabled')) return;
               previous.classList.add('icon-button-disabled')
               const limit = data[key].length;
@@ -748,7 +750,9 @@
             const forward = createIconButton('arrow_forward');
             forward.id = 'forwardButton';
             forward.addEventListener('click', e => {
-              fadeIn(document.querySelector('#graphDialogLoader'));
+              const graphLoader = document.querySelector('#graphDialogLoader');
+              graphLoader.style.pointerEvents = 'auto';
+              fadeIn(graphLoader);
               if (forward.classList.contains('icon-button-disabled')) return;
               forward.classList.add('icon-button-disabled');
               const limit = log.history.length;
@@ -779,7 +783,9 @@
             const previous = createIconButton('arrow_back');
             previous.id = 'previousButton';
             previous.addEventListener('click', e => {
-              fadeIn(document.querySelector('#graphDialogLoader'));
+              const graphLoader = document.querySelector('#graphDialogLoader');
+              graphLoader.style.pointerEvents = 'auto';
+              fadeIn(graphLoader);
               if (previous.classList.contains('icon-button-disabled')) return;
               previous.classList.add('icon-button-disabled');
               const limit = log.history.length;
@@ -807,7 +813,9 @@
           if (page === 1) {
             fadeOut(forwardExist).then(_ => forwardExist.parentNode.removeChild(forwardExist));
           }
-          fadeOut(document.querySelector('#graphDialogLoader'));
+          const graphLoader = document.querySelector('#graphDialogLoader');
+          graphLoader.style.pointerEvents = 'none';
+          fadeOut(graphLoader);
           // stamp data to the new canvas
           const chartData = {
             labels: returnLocaleTime(log.history),

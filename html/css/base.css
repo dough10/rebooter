@@ -244,6 +244,20 @@ body {
 .clickable:active {
   background: rgba(0, 0, 0, 0.1);
 }
+#loader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  z-index:5;
+  pointer-events: none;
+}
 .loader {
   position: absolute;
   top: 0;
