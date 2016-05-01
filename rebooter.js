@@ -8,6 +8,7 @@ let Ping = require ("ping-wrapper");
 let Data = require('nedb');
 let compression = require('compression');
 let network = require('network');
+var onoff = require('onoff').Gpio;
 Ping.configure();
 let failedRouterPings = 0;
 let hasRebooted = false;
@@ -98,21 +99,22 @@ function ping(url) {
  * reboot the router
  */
 function rebootRouter(type) {
-  // set up gpio
-
-  // turn on relay to disable the power
-
-  emit('toast', 'rebooting router...');
   hasRebooted = true;
-  setTimeout(() => {
-    // turn off relay to allow power to router
-
-    restarts.insert({
-      time: new Date().getTime(),
-      type: type
-    }, err => pushRestarts(err));
-    emit('toast', 'powering on router...');
-  }, 35000);
+  emit('toast', 'rebooting router...');
+  // set up gpio
+  var gpio = onoff(config.relayPin, 'out');
+  gpio.write(1, _ => {
+    setTimeout(_ => {
+      restarts.insert({
+        time: new Date().getTime(),
+        type: type
+      }, err => pushRestarts(err));
+      emit('toast', 'powering on router...');
+      gpio.write(0, _ => {
+        print('router rebooted');
+      });
+    }, 35000);
+  });
 }
 
 
