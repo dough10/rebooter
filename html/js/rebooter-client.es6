@@ -1,6 +1,17 @@
 (_ => {
   'use strict';
 
+  // register a service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('js/service-worker.js').then(_ => {
+      console.log('service worker registered');
+    }).catch(_ => {
+      console.log('service worker registration failed')
+    });;
+  }
+
+
+
   /**
    * Graphs !!!!!
    *
@@ -120,6 +131,9 @@
     }
   }
 
+  /**
+   * returns a loading element
+   */
   class LoadingElement {
     constructor () {
       const wrapper = document.createElement('div');
@@ -140,16 +154,10 @@
     }
   }
 
-
-  // object to store application data
   let appData = {};
-
   let dataPoints;
-
   let socket;
-
   let page = 1;
-
   let maxPage;
   let winHeight = window.innerHeight;
   let scrollWidth = scrollbarWidth();
@@ -191,6 +199,9 @@
     }
   }
 
+  /**
+   * start the reboot animation
+   */
   function startRebootTimer() {
     return new Promise(resolve => {
       const wrapper = document.querySelector('.bar-wrapper');
@@ -342,14 +353,27 @@
     return output;
   }
 
+  /**
+   * return the highest value in a array
+   *
+   * @param {Array} array
+   */
   function highestPing(array) {
     return Math.max.apply(Math, array);
   }
 
+  /**
+   * return the lowest value in a array
+   *
+   * @param {Array} array
+   */
   function lowestPing(array) {
     return Math.min.apply(Math, array);
   }
 
+  /**
+   * returns the width value of a scrollbar
+   */
   function scrollbarWidth() {
     var inner = document.createElement('p');
     inner.style.width = "100%";
@@ -372,7 +396,9 @@
     return (w1 - w2);
   }
 
-
+  /**
+   * return a object of color values
+   */
   function getRandomColor() {
     const threshold = 200;
     let r = (Math.floor(Math.random() * 256));
@@ -396,6 +422,9 @@
     }
   }
 
+  /**
+   * close a existing if one is open
+   */
   function closeExistingGraph() {
     return new Promise(resolve => {
       const exist = document.querySelector('#chartDialog');
@@ -657,6 +686,9 @@
   }
 
 
+  /**
+   * animate scroll to top of the page
+   */
   function animateScroll() {
     const wrapper = document.querySelector('.wrapper');
     const card = document.querySelector('#card');
@@ -698,6 +730,7 @@
   // run the app
   window.onload = _ => {
     positionThings();
+
     // fade card opacity
     const reboot = document.querySelector('#reboot');
     const rebootClose = document.querySelector('#reboot-dialog-close');
