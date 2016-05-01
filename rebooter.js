@@ -17,7 +17,7 @@ const Ping = require ("ping-wrapper");
 const Data = require('nedb');
 const compression = require('compression');
 const network = require('network');
-//const onoff = require('onoff').Gpio;
+const onoff = require('onoff').Gpio;
 
 server.listen(config.port, _ => {
   console.log(new Date().toLocaleString() + ":   Web interface started on port " + config.port);
