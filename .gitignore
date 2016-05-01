@@ -1,6 +1,6 @@
 /node_modules/
-/data.db
-/restarts.db
+/data/
 /html/rebooter-client.html
 /html/js/rebooter-client.js
 /html/js/rebooter-client.js.map
+/ssl/

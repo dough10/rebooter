@@ -1,25 +1,41 @@
 'use strict';
-let config = require(__dirname + '/config.json');
-let express = require('express');
-let app = express();
-let server = app.listen(config.port);
-let io = require('socket.io')(server);
-let Ping = require ("ping-wrapper");
-let Data = require('nedb');
-let compression = require('compression');
-let network = require('network');
-var onoff = require('onoff').Gpio;
+
+const config = require(__dirname + '/config.json');
+const fs = require('fs');
+const httpsOptions = {
+  key: fs.readFileSync(config.sslKey),
+  cert: fs.readFileSync(config.sslCert),
+  requestCert: false,
+  rejectUnauthorized: false
+};
+const express = require('express');
+const https = require('https');
+const app = express();
+const server = https.Server(httpsOptions, app);
+const io = require('socket.io')(server);
+const Ping = require ("ping-wrapper");
+const Data = require('nedb');
+const compression = require('compression');
+const network = require('network');
+//const onoff = require('onoff').Gpio;
+
+server.listen(config.port, _ => {
+  console.log(new Date().toLocaleString() + ":   Web interface started on port " + config.port);
+});
+
+
+app.disable('x-powered-by');
 Ping.configure();
 let failedRouterPings = 0;
 let hasRebooted = false;
 
 let history = new Data({
-  filename: __dirname + '/data.db',
+  filename: __dirname + '/data/data.db',
   autoload: true
 });
 
 let restarts = new Data({
-  filename: __dirname + '/restarts.db',
+  filename: __dirname + '/data/restarts.db',
   autoload: true
 });
 

@@ -1,5 +1,7 @@
 {
   "port": 8080,
+  "sslKey":"ssl/server.key",
+  "sslCert":"ssl/server.crt",
   "maxPing": 300,
   "repeat": 0.25,
   "relayPin": 4,
