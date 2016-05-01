@@ -1,12 +1,12 @@
 (_ => {
   'use strict';
-  
+
   /**
    * Graphs !!!!!
    *
    * @param {Number} height
    * @param {Number} width
-   * @param {String} pointerEvents   || defaults to auto  ** optional 
+   * @param {String} pointerEvents   || defaults to auto  ** optional
    */
   class Graph {
     constructor(height, width, pointerEvents) {
@@ -15,16 +15,16 @@
       this.canvas.height = height;
       this.canvas.style.pointerEvents = pointerEvents || 'auto';
     }
-    
+
     /**
      * append the canvas to a element
      *
-     * @param {htmlElement} el 
+     * @param {htmlElement} el
      */
     appendTo(el) {
       el.appendChild(this.canvas);
     }
-    
+
     /**
      * draw data to the graph
      *
@@ -55,7 +55,7 @@
         scaleFontSize: 10
       });
     }
-  
+
     /**
      * returns the canvas HTML element
      *
@@ -65,13 +65,13 @@
       return this.canvas;
     }
   }
- 
- 
+
+
   /**
    * display a toast message
    *
    * @param {String} message
-   * @param {Number} timeout in seconds  || defualt 5 seconds  ** optional 
+   * @param {Number} timeout in seconds  || defualt 5 seconds  ** optional
    */
   class Toast {
     constructor(message, _timeout) {
@@ -88,7 +88,7 @@
         this.toast.classList.remove('hidden');
       }, 50);
     }
-    
+
     transitionEnd() {
       setTimeout(_ => {
         this.toast.addEventListener('transitionend', _ => {
@@ -99,7 +99,7 @@
       this.toast.removeEventListener('transitionend', this.transitionEnd.bind(this));
     }
   }
-  
+
   /**
    * returns a material design icon buttonn
    */
@@ -140,7 +140,7 @@
     }
   }
 
-  
+
   // object to store application data
   let appData = {};
 
@@ -151,6 +151,9 @@
   let page = 1;
 
   let maxPage;
+  let winHeight = window.innerHeight;
+  let scrollWidth = scrollbarWidth();
+  let winWidth = window.innerWidth;
 
   /**
    * return readable time sence a given date
@@ -222,10 +225,10 @@
     return new Promise(resolve => {
       const animationEnd = _ => {
         el.removeEventListener("transitionend", animationEnd);
-        el.classList.remove('animate');
+        el.classList.remove('js-animate');
         resolve();
       };
-      el.classList.add('animate');
+      el.classList.add('js-animate');
       requestAnimationFrame(_ => {
         el.style.opacity = 1;
       });
@@ -242,10 +245,10 @@
     return new Promise(resolve => {
       const animationEnd = _ => {
         el.removeEventListener("transitionend", animationEnd);
-        el.classList.remove('animate');
+        el.classList.remove('js-animate');
         resolve();
       };
-      el.classList.add('animate');
+      el.classList.add('js-animate');
       requestAnimationFrame(_ => {
         el.style.opacity = 0;
       });
@@ -297,9 +300,9 @@
     let len = array.length;
     for (let i = 0; i < len; i++) {
       output.push((_ => {
-        if (window.innerHeight < 500) {
+        if (winHeight < 500) {
           return '';
-        } else if (window.innerWidth < 700) {
+        } else if (winWidth < 700) {
           switch (true) {
             case (i === 0):
               return new Date(array[i].time).toLocaleTimeString();
@@ -431,8 +434,6 @@
       // set header text
       text.textContent = key;
       div.appendChild(text);
-      // create canvas
-      const canvas = new Graph(100, card.offsetWidth - 48, 'none');
       // create clickable area
       const canvasWrapper = document.createElement('div');
       //canvasWrapper.appendChild(canvas);
@@ -444,6 +445,8 @@
       // generate graph data
       const graphData = returnData(data[key]);
       const graphColor = getRandomColor();
+      // create canvas
+      const canvas = new Graph(100, card.offsetWidth - 48, 'none');
       canvas.appendTo(canvasWrapper);
       canvas.drawGraph(key, returnBlankLabel(data[key]), graphData, graphColor, false);
       fadeIn(div);
@@ -506,25 +509,25 @@
 
         // create the canvas
         const detailedCanvas = new Graph((_ => {
-          if (window.innerHeight < 450) {
+          if (winHeight < 450) {
             return 125;
           } else {
             return 250;
           }
-        })(), window.innerWidth - (80 + 32 + scrollbarWidth()));
+        })(), winWidth - (80 + 32 + scrollWidth));
         detailedCanvas.appendTo(dialog);
         // send dialog to DOM
         body.appendChild(dialog);
         // position the dialog
         const dialogTotalHeight = (dialog.offsetHeight + 48);
-        const centerH = Math.floor((window.innerHeight - 32) / 2);
+        const centerH = Math.floor((winHeight - 32) / 2);
         const centerDH = Math.floor(dialogTotalHeight / 2);
         dialog.style.top = Math.floor(centerH - centerDH) + 'px';
         dialog.style.left = '0px';
 
         // draw the detailed graph
         detailedCanvas.drawGraph(key, returnLabels(data[key]), graphData, graphColor, (() => {
-          if (window.innerWidth < 400) return false;
+          if (winWidth < 400) return false;
           return true;
         })());
         // open the dialog
@@ -596,8 +599,8 @@
   function positionThings() {
     // reboot dialog
     let dialog = document.querySelector('#reboot-dialog');
-    let centerH = Math.floor((window.innerHeight - 32) / 2);
-    let centerW = Math.floor((window.innerWidth - 32) / 2);
+    let centerH = Math.floor((winHeight - 32) / 2);
+    let centerW = Math.floor((winWidth - 32) / 2);
     let centerDH = Math.floor((dialog.offsetHeight + 24) / 2);
     let centerDW = Math.floor((dialog.offsetWidth + 40) / 2);
     let top = Math.floor(centerH - centerDH) + 'px';
@@ -678,6 +681,9 @@
   // redraw graphs on window reload
   let timer = 0;
   window.onresize = _ => {
+    winHeight = window.innerHeight;
+    scrollWidth = scrollbarWidth();
+    winWidth = window.innerWidth;
     if (timer) {
       clearTimeout(timer);
       timer = 0;
@@ -748,11 +754,11 @@
         scrollPOS = scrollTop;
       });
     };
-    
-    
+
+
     // socket.io setup
     socket = io.connect(location.origin);
-    
+
     /**
      * socket connected
      */
@@ -795,7 +801,7 @@
     }));
 
     /**
-     * update detaild graph 
+     * update detaild graph
      */
     socket.on('log', log => {
       if (log.history.length) {
@@ -803,19 +809,19 @@
         const oldCanvas = dialog.querySelector('canvas');
         fadeOut(oldCanvas).then(_ => {
           dialog.removeChild(oldCanvas);
-          
+
           const graphData = returnData(log.history);
-          
+
           // output pings
           const texts = dialog.querySelectorAll('.high-low-text');
           texts[0].textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
           texts[1].textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
-          
+
           // work with buttons
           const forwardExist = dialog.querySelector('#forwardButton');
           if (forwardExist && forwardExist.classList.contains('icon-button-disabled'))
             forwardExist.classList.remove('icon-button-disabled');
-          
+
           if (!forwardExist) {
             const forward = new IconButton('arrow_forward');
             forward.id = 'forwardButton';
@@ -876,7 +882,7 @@
                     g: log.color.g,
                     b: log.color.b
                   }
-                });              
+                });
               });
             });
             previous.style.opacity = 0;
@@ -892,19 +898,19 @@
             fadeOut(forwardExist).then(_ => forwardExist.parentNode.removeChild(forwardExist));
           }
           const newCanvas = new Graph((_ => {
-            if (window.innerHeight < 450) {
+            if (winHeight < 450) {
               return 125;
             } else {
               return 250;
             }
-          })(), window.innerWidth - (80 + 32 + scrollbarWidth()));
+          })(), winWidth - (80 + 32 + scrollWidth));
           newCanvas.appendTo(dialog);
           // stamp data to the new canvas
           newCanvas.drawGraph(log.host, returnLabels(log.history), graphData, log.color, (_ => {
-            if (window.innerWidth < 400) return false;
+            if (winWidth < 400) return false;
             return true;
           })());
-          
+
           // set up final transition
           const newCanvasElement = newCanvas.returnElement();
           newCanvasElement.style.opacity = 0;
@@ -918,7 +924,7 @@
 
     /**
      * update restarts data
-     */ 
+     */
     socket.on('restarts', logs => {
       if (lastRebootTimer) clearTimeout(lastRebootTimer);
       outputRestarts(logs)
@@ -926,12 +932,12 @@
 
     /**
      * server sent a toast message
-     * 
+     *
      * @param {String} message
      */
     socket.on('toast', message => {
       if (message === 'rebooting router...') {
-        // ensure button is disabled 
+        // ensure button is disabled
         reboot.classList.add('disabled-button')
         // start the animation
         startRebootTimer();
