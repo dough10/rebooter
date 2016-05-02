@@ -3,8 +3,8 @@
 const config = require(__dirname + '/config.json');
 const fs = require('fs');
 const httpsOptions = {
-  key: fs.readFileSync(config.sslKey),
-  cert: fs.readFileSync(config.sslCert),
+  key: fs.readFileSync(__dirname + config.sslKey),
+  cert: fs.readFileSync(__dirname + config.sslCert),
   requestCert: false,
   rejectUnauthorized: false
 };

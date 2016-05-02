@@ -790,7 +790,9 @@
 
 
     // socket.io setup
-    socket = io.connect(location.origin);
+    socket = io.connect(location.origin, {
+      'secure': true
+    });
 
     /**
      * socket connected
