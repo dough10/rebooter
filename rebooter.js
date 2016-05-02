@@ -1,31 +1,22 @@
 'use strict';
 
 const config = require(__dirname + '/config.json');
-const fs = require('fs');
-const httpsOptions = {
-  key: fs.readFileSync(__dirname + config.sslKey),
-  cert: fs.readFileSync(__dirname + config.sslCert),
-  requestCert: false,
-  rejectUnauthorized: false
-};
 const express = require('express');
 const https = require('https');
 const app = express();
-const server = https.Server(httpsOptions, app);
+let server = app.listen(config.port);
 const io = require('socket.io')(server);
 const Ping = require ("ping-wrapper");
 const Data = require('nedb');
 const compression = require('compression');
 const network = require('network');
-const onoff = require('onoff').Gpio;
-
-server.listen(config.port, _ => {
-  console.log(new Date().toLocaleString() + ":   Web interface started on port " + config.port);
-});
+//const onoff = require('onoff').Gpio;
 
 
 app.disable('x-powered-by');
 Ping.configure();
+
+
 let failedRouterPings = 0;
 let hasRebooted = false;
 

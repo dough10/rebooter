@@ -15,7 +15,7 @@ body {
   transform: translateZ(0);
   -webkit-overflow-scrolling: touch;
 }
-#header {
+header {
   position: absolute;
   top: 0;
   left: 0;
@@ -130,6 +130,40 @@ body {
     transform: translateX(-100%)
   }
 }
+@keyframes spin {
+  0% {
+    transform: rotate(0deg)
+  }
+  25% {
+    transform: rotate(90deg)
+  }
+  50% {
+    transform: rotate(180deg)
+  }
+  75% {
+    transform: rotate(270deg)
+  }
+  100% {
+    transform: rotate(360deg)
+  }
+}
+@keyframes spin-back {
+  0% {
+    transform: rotate(360deg)
+  }
+  25% {
+    transform: rotate(270deg)
+  }
+  50% {
+    transform: rotate(180deg)
+  }
+  75% {
+    transform: rotate(90deg)
+  }
+  100% {
+    transform: rotate(0deg)
+  }
+}
 .toast {
   background: #323232;
   padding: 16px;
@@ -235,11 +269,13 @@ body {
 #fab:active {
   box-shadow:0 8px 10px 1px rgba(0,0,0,0.14),0 3px 14px 2px rgba(0,0,0,0.12),0 5px 5px -3px rgba(0,0,0,0.4);
 }
+#fab:hover {
+  animation: spin .35s;
+}
 .clickable {
   cursor: pointer;
   overflow: hidden;
   position: relative;
-  transform: translateZ(1)
 }
 .clickable:active {
   background: rgba(0, 0, 0, 0.1);

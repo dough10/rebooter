@@ -1,16 +1,6 @@
 (_ => {
   'use strict';
 
-  // register a service worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('js/service-worker.js').then(_ => {
-      console.log('service worker registered');
-    }).catch(_ => {
-      console.log('service worker registration failed')
-    });;
-  }
-
-
 
   /**
    * Graphs !!!!!
@@ -86,28 +76,27 @@
    */
   class Toast {
     constructor(message, _timeout) {
+      const transitionEnd = _ => {
+        setTimeout(_ => {
+          this.toast.addEventListener('transitionend', _ => {
+            document.querySelector('body').removeChild(this.toast);
+          });
+          this.toast.classList.add('hidden');
+        }, this._timeout);
+        this.toast.removeEventListener('transitionend', transitionEnd);
+      };
       this._timeout = _timeout * 1000 || 5000;
       this.toast = document.createElement('div');
       this.toast.classList.add('toast');
       this.toast.classList.add('hidden');
       this.toast.id = 'toast';
       this.toast.style.willChange = 'opacity';
-      this.toast.addEventListener('transitionend', this.transitionEnd.bind(this), true);
+      this.toast.addEventListener('transitionend', transitionEnd, true);
       this.toast.textContent = message;
       document.querySelector('body').appendChild(this.toast);
       setTimeout(_ => {
         this.toast.classList.remove('hidden');
       }, 50);
-    }
-
-    transitionEnd() {
-      setTimeout(_ => {
-        this.toast.addEventListener('transitionend', _ => {
-          document.querySelector('body').removeChild(this.toast);
-        });
-        this.toast.classList.add('hidden');
-      }, this._timeout);
-      this.toast.removeEventListener('transitionend', this.transitionEnd.bind(this));
     }
   }
 
@@ -729,6 +718,7 @@
 
   // run the app
   window.onload = _ => {
+    
     positionThings();
 
     // fade card opacity
