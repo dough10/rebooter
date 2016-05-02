@@ -10,7 +10,7 @@ const Ping = require ("ping-wrapper");
 const Data = require('nedb');
 const compression = require('compression');
 const network = require('network');
-//const onoff = require('onoff').Gpio;
+const onoff = require('onoff').Gpio;
 
 
 app.disable('x-powered-by');
@@ -145,10 +145,8 @@ function countResults(items) {
     }
   }
   // all pings returned with good time
-  if (!count && !highPings) {
-    hasRebooted = false;
-    print('all pings successful');
-  }
+  if (!count && !highPings) print('all pings successful');
+  if count > 1) hasRebooted = false;
   if (count) emit('toast', count + ' of ' + addresses.length + ' pings failed with ' + highPings + ' high pings');
   // all pings failed
   if (count === total && !hasRebooted) rebootRouter('automated');
@@ -161,7 +159,7 @@ function countResults(items) {
 /**
  * update restarts on client
  *
-* @param {Error} err
+ * @param {Error} err
  */
 function pushRestarts(err) {
   if (err) print(err);
