@@ -126,6 +126,67 @@
     }
   }
 
+
+  class Dialog {
+    constructor(host, highPing, lowPing, graphColor) {
+      // create a new dialog
+      const dialog = document.createElement('div');
+      dialog.id = 'chartDialog';
+      dialog.classList.add('dialog');
+      const loading = new LoadingElement();
+      loading.id = 'graphDialogLoader';
+      dialog.appendChild(loading);
+      const spaceBetween = document.createElement('div');
+      dialog.appendChild(spaceBetween);
+      spaceBetween.classList.add('flex');
+      spaceBetween.classList.add('space-between');
+      // create the text container
+      const textHeader = document.createElement('div');
+      spaceBetween.appendChild(textHeader);
+      const right = document.createElement('div');
+      const close = new IconButton('close');
+      close.style.color = 'red';
+      close.addEventListener('click', _ => {
+        dialog.classList.remove('dialog-opened');
+        dialog.addEventListener('transitionend', _ => {
+          document.querySelector('body').removeChild(dialog);
+        });
+      });
+      right.appendChild(close);
+      spaceBetween.appendChild(right);
+      // header text
+      const label = document.createElement('h2');
+      label.textContent = host;
+      textHeader.appendChild(label);
+      // highest ping
+      const highest = document.createElement('div');
+      highest.textContent = 'Highest Ping: ' + highPing + ' ms';
+      highest.classList.add('high-low-text');
+      textHeader.appendChild(highest);
+      // lowest ping
+      const lowest = document.createElement('div');
+      lowest.textContent = 'Lowest Ping: ' + lowPing + ' ms';
+      lowest.classList.add('high-low-text');
+      textHeader.appendChild(lowest);
+
+      // box for buttons to navigate back and forwards through data
+      const buttonBar = document.createElement('div');
+      buttonBar.classList.add('flex');
+      buttonBar.classList.add('space-between');
+      const back = document.createElement('div');
+      back.id = 'backB';
+      const forward = document.createElement('div');
+      forward.id = 'forwardB';
+      buttonBar.appendChild(back);
+      buttonBar.appendChild(forward)
+      dialog.appendChild(buttonBar);
+      for (let index in graphColor) {
+        label.dataset[index] = graphColor[index];
+      }
+      return dialog;
+    }
+  }
+
   let appData = {};
   let dataPoints;
   let socket;
@@ -134,26 +195,26 @@
   let winHeight;
   let scrollWidth;
   let winWidth;
-  let bigGraphHeight;
-  let bigGraphWidth;
   let cardWidth;
+
+  function bigGraphHeight() {
+    if (winHeight < 450) {
+      return 125;
+    } else {
+      return 250;
+    }
+  }
+
+  function bigGraphWidth() {
+    return winWidth - (80 + 32 + scrollWidth);
+  }
+
 
   function getWindowSize() {
     winHeight = window.innerHeight;
     scrollWidth = scrollbarWidth();
     winWidth = window.innerWidth;
     cardWidth = document.querySelector('#card').offsetWidth;
-    bigGraphHeight = (_ => {
-      if (winHeight < 450) {
-        return 125;
-      } else {
-        return 250;
-      }
-    })();
-
-    bigGraphWidth = (_ => {
-      return winWidth - (80 + 32 + scrollWidth);
-    })();
   }
 
   /**
@@ -260,6 +321,31 @@
     });
   }
 
+
+  /**
+   * animate scroll to top of the page
+   */
+  function animateScroll() {
+    const wrapper = document.querySelector('.wrapper');
+    const card = document.querySelector('#card');
+    const fromTop = wrapper.scrollTop;
+    let margin = 0;
+    const animationSeconds = 0.25;
+    const inc = Math.abs((fromTop / animationSeconds) / 60);
+    card.style.willChange = 'transform';
+    requestAnimationFrame(function step() {
+      margin += inc;
+      if (margin >= fromTop) {
+        card.style.transform = 'none';
+        card.style.willChange = 'initial';
+        wrapper.scrollTop = 0;
+        return;
+      }
+      card.style.transform = 'translateY(' + margin + 'px)';
+      requestAnimationFrame(step);
+    });
+  }
+
   /**
    * sort the history object into appData object
    *
@@ -335,7 +421,7 @@
     let output = [];
     let len = array.length;
     for (let i = 0; i < len; i++) {
-      output.push((() => {
+      output.push((_ => {
         if (array[i].data) {
           return array[i].data.time;
         } else {
@@ -436,6 +522,37 @@
     });
   }
 
+
+  function openDialog(host, labels, graphData, graphColor) {
+    page = 1;
+    // create teh dialog
+    const dialog = new Dialog(host, highestPing(graphData), lowestPing(graphData), graphColor);
+    // create the canvas
+    const detailedCanvas = new Graph(bigGraphHeight(), bigGraphWidth());
+    // append canvas to dialog
+    dialog.appendChild(detailedCanvas.canvas);
+    // send dialog to DOM
+    document.querySelector('body').appendChild(dialog);
+    // draw the detailed graph
+    detailedCanvas.drawGraph(host, labels, graphData, graphColor, (_ => {
+      if (winWidth < 400) return false;
+      return true;
+    })());
+    // position the dialog
+    const dialogTotalHeight = (dialog.offsetHeight + 48);
+    const centerH = Math.floor((winHeight - 32) / 2);
+    const centerDH = Math.floor(dialogTotalHeight / 2);
+    dialog.style.top = Math.floor(centerH - centerDH) + 'px';
+    dialog.style.left = '0px';
+    // get count of data points
+    socket.emit('count', host);
+    // open the dialog
+    setTimeout(_ => {
+      dialog.classList.add('dialog-opened');
+    }, 100);
+  }
+
+
   /**
    * render graphs of the input data
    *
@@ -448,147 +565,35 @@
       const id = 'el-' + key.replace(/\./g,'');
       const exist = document.querySelector('#' + id);
       if (exist) card.removeChild(exist);
-      // create the new dialog
+      // generate graph data
+      const graphData = returnData(data[key]);
+      const graphColor = getRandomColor();
+      // create wrappers
       const div = document.createElement('div');
-      const text = document.createElement('h3');
       div.id = id;
       div.style.opacity = 0;
-      // set header text
+      const text = document.createElement('h3');
       text.textContent = key;
       div.appendChild(text);
       // create clickable area
       const canvasWrapper = document.createElement('div');
-      //canvasWrapper.appendChild(canvas);
       canvasWrapper.classList.add('clickable');
-      canvasWrapper.style.position = 'relative';
+      canvasWrapper.addEventListener('click', _ => closeExistingGraph()
+        .then(_ => openDialog(key, returnLabels(data[key]), graphData, graphColor)));
+      // append teh canvas to the wrapper
       div.appendChild(canvasWrapper);
-      // send graph to the DOM
+      // send wrapper & it's content to the DOM
       card.appendChild(div);
-      // generate graph data
-      const graphData = returnData(data[key]);
-      const graphColor = getRandomColor();
       // create canvas
       const canvas = new Graph(100, cardWidth - 48, 'none');
+      // append canvas element to DOM
       canvasWrapper.appendChild(canvas.canvas);
+      // render data
       canvas.drawGraph(key, returnBlankLabel(data[key]), graphData, graphColor, false);
+      // show graph & hide app loader if visable
       fadeIn(div);
       const loader = document.querySelector('#loader');
       if (loader.style.opacity !== 0) fadeOut(loader);
-      canvasWrapper.addEventListener('click', _ => closeExistingGraph().then(_ => {
-        page = 1;
-        const body = document.querySelector('body');
-        // create a new dialog
-        const dialog = document.createElement('div');
-        dialog.id = 'chartDialog';
-        dialog.classList.add('dialog');
-        const loading = new LoadingElement();
-        loading.id = 'graphDialogLoader';
-        dialog.appendChild(loading);
-        const spaceBetween = document.createElement('div');
-        dialog.appendChild(spaceBetween);
-        spaceBetween.classList.add('flex');
-        spaceBetween.classList.add('space-between');
-        // create the text container
-        const textHeader = document.createElement('div');
-        spaceBetween.appendChild(textHeader);
-        const right = document.createElement('div');
-        const close = new IconButton('close');
-        close.style.color = 'red';
-        close.addEventListener('click', _ => {
-          dialog.classList.remove('dialog-opened');
-          dialog.addEventListener('transitionend', _ => {
-            body.removeChild(dialog);
-          });
-        });
-        right.appendChild(close);
-        spaceBetween.appendChild(right);
-        // header text
-        const label = document.createElement('h2');
-        label.textContent = key;
-        textHeader.appendChild(label);
-        // highest ping
-        const highest = document.createElement('div');
-        highest.textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
-        highest.classList.add('high-low-text');
-        textHeader.appendChild(highest);
-        // lowest ping
-        const lowest = document.createElement('div');
-        lowest.textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
-        lowest.classList.add('high-low-text');
-        textHeader.appendChild(lowest);
-
-        // box for buttons to navigate back and forwards through data
-        const buttonBar = document.createElement('div');
-        buttonBar.classList.add('flex');
-        buttonBar.classList.add('space-between');
-        const back = document.createElement('div');
-        back.id = 'backB';
-        const forward = document.createElement('div');
-        forward.id = 'forwardB';
-        buttonBar.appendChild(back);
-        buttonBar.appendChild(forward)
-        dialog.appendChild(buttonBar);
-
-        // create the canvas
-        const detailedCanvas = new Graph(bigGraphHeight, bigGraphWidth);
-        dialog.appendChild(detailedCanvas.canvas);
-        // send dialog to DOM
-        body.appendChild(dialog);
-        // position the dialog
-        const dialogTotalHeight = (dialog.offsetHeight + 48);
-        const centerH = Math.floor((winHeight - 32) / 2);
-        const centerDH = Math.floor(dialogTotalHeight / 2);
-        dialog.style.top = Math.floor(centerH - centerDH) + 'px';
-        dialog.style.left = '0px';
-        for (let index in graphColor) {
-          label.dataset[index] = graphColor[index];
-        }
-        // draw the detailed graph
-        detailedCanvas.drawGraph(key, returnLabels(data[key]), graphData, graphColor, (() => {
-          if (winWidth < 400) return false;
-          return true;
-        })());
-        // open the dialog
-        setTimeout(() => {
-          dialog.classList.add('dialog-opened');
-        }, 100);
-        socket.emit('count', key);
-        socket.on('count', count => {
-          dataPoints = count.count;
-          maxPage = count.count / appData[count.host].length;
-          if (count.count > appData[count.host].length) {
-            // previous button
-            const previous = new IconButton('arrow_back');
-            previous.id = 'previousButton';
-            previous.addEventListener('click', e => {
-              // early return if button is disabled
-              if (previous.classList.contains('icon-button-disabled')) return;
-              // disable the button
-              previous.classList.add('icon-button-disabled')
-              // show the loading screen
-              const graphLoader = document.querySelector('#graphDialogLoader');
-              graphLoader.style.pointerEvents = 'auto';
-              fadeIn(graphLoader).then(_ => {
-                const limit = data[key].length;
-                page++;
-                socket.emit('log', {
-                  host: key,
-                  limit: limit,
-                  skip: (_ => {
-                    const skip = count.count - (limit * page);
-                    if (skip < 0) {
-                      return 0;
-                    } else {
-                      return skip;
-                    }
-                  })()
-                });
-              });
-            });
-            back.appendChild(previous);
-          }
-        });
-      }));
     }
   }
 
@@ -627,33 +632,36 @@
     const left = Math.floor(centerW - centerDW) + 'px';
     rDialog.style.top = top;
     rDialog.style.left = left;
+    
     // fab
     let fab = document.querySelector('#fab');
     let cardWidth = document.querySelector('#card').offsetWidth;
     fab.style.right = (centerW - (cardWidth / 2)) + 20 + 'px';
+    
     // graph dialog
     const graphDialog = document.querySelector('#chartDialog');
-    if (graphDialog) {
-      const oldGraph = graphDialog.querySelector('canvas');
-      fadeOut(oldGraph).then(_ => {
-        graphDialog.removeChild(oldGraph);
-        const label = graphDialog.querySelector('h2');
-        const newGraph =  new Graph(bigGraphHeight, bigGraphWidth);
-        graphDialog.appendChild(newGraph.canvas);
-        const host = label.textContent;
-        newGraph.drawGraph(host, returnLabels(appData[host]), returnData(appData[host]), label.dataset, (() => {
-          if (winWidth < 400) return false;
-          return true;
-        })());
-        fadeIn(newGraph.canvas).then(_ => {
-          const dialogTotalHeight = (graphDialog.offsetHeight + 48);
-          const centerH = Math.floor((winHeight - 32) / 2);
-          const centerDH = Math.floor(dialogTotalHeight / 2);
-          graphDialog.style.top = Math.floor(centerH - centerDH) + 'px';
-          graphDialog.style.left = '0px';
-        })
-      });
-    }
+    if (!graphDialog) return;
+    const oldGraph = graphDialog.querySelector('canvas');
+    fadeOut(oldGraph).then(_ => {
+      graphDialog.removeChild(oldGraph);
+      const label = graphDialog.querySelector('h2');
+      const newGraph =  new Graph(bigGraphHeight(), bigGraphWidth());
+      graphDialog.appendChild(newGraph.canvas);
+      const host = label.textContent;
+      newGraph.drawGraph(host, returnLabels(appData[host]), returnData(appData[host]), label.dataset, (_ => {
+        if (winWidth < 400) return false;
+        return true;
+      })());
+      fadeIn(newGraph.canvas).then(_ => {
+        const dialogTotalHeight = (graphDialog.offsetHeight + 48);
+        const centerH = Math.floor((winHeight - 32) / 2);
+        const centerDH = Math.floor(dialogTotalHeight / 2);
+        graphDialog.style.top = Math.floor(centerH - centerDH) + 'px';
+        graphDialog.style.left = '0px';
+        console.log(Math.floor(centerH - centerDH));
+      })
+    });
+
   }
 
   /**
@@ -694,30 +702,6 @@
     });
   }
 
-
-  /**
-   * animate scroll to top of the page
-   */
-  function animateScroll() {
-    const wrapper = document.querySelector('.wrapper');
-    const card = document.querySelector('#card');
-    const fromTop = wrapper.scrollTop;
-    let margin = 0;
-    const animationSeconds = 0.25;
-    const inc = Math.abs((fromTop / animationSeconds) / 60);
-    card.style.willChange = 'transform';
-    requestAnimationFrame(function step() {
-      margin += inc;
-      if (margin >= fromTop) {
-        card.style.transform = 'none';
-        card.style.willChange = 'initial';
-        wrapper.scrollTop = 0;
-        return;
-      }
-      card.style.transform = 'translateY(' + margin + 'px)';
-      requestAnimationFrame(step);
-    });
-  }
 
   // redraw graphs on window reload
   let timer = 0;
@@ -808,7 +792,7 @@
     socket.on('connect', _ => {
       var led = document.querySelector('#statusIndicator');
       if (led.classList.contains('offline')) {
-        requestAnimationFrame(() => {
+        requestAnimationFrame(_ => {
           led.classList.remove('offline');
           led.classList.add('online');
         });
@@ -822,13 +806,13 @@
       var led = document.querySelector('#statusIndicator');
       let led2 = document.querySelector('#routerStatus');
       if (led.classList.contains('online')) {
-        requestAnimationFrame(() => {
+        requestAnimationFrame(_ => {
           led.classList.remove('online');
           led.classList.add('offline');
         });
       }
       if (led2.classList.contains('online')) {
-        requestAnimationFrame(() => {
+        requestAnimationFrame(_ => {
           led2.classList.remove('online');
           led2.classList.add('offline');
         });
@@ -842,6 +826,48 @@
       appData = data;
       graphData(data);
     }));
+    
+    
+    /**
+     * count how many data pointes for a host
+     */
+    socket.on('count', count => {
+      const dialog = document.querySelector('#chartDialog');
+      dataPoints = count.count;
+      maxPage = count.count / appData[count.host].length;
+      if (count.count > appData[count.host].length) {
+        // previous button
+        const previous = new IconButton('arrow_back');
+        previous.id = 'previousButton';
+        previous.addEventListener('click', e => {
+          // early return if button is disabled
+          if (previous.classList.contains('icon-button-disabled')) return;
+          // disable the button
+          previous.classList.add('icon-button-disabled')
+          // show the loading screen
+          const graphLoader = dialog.querySelector('#graphDialogLoader');
+          graphLoader.style.pointerEvents = 'auto';
+          fadeIn(graphLoader).then(_ => {
+            const limit = appData[count.host].length;
+            page++;
+            socket.emit('log', {
+              host: count.host,
+              limit: limit,
+              skip: (_ => {
+                const skip = count.count - (limit * page);
+                if (skip < 0) {
+                  return 0;
+                } else {
+                  return skip;
+                }
+              })()
+            });
+          });
+        });
+        dialog.querySelector('#backB').appendChild(previous);
+      }
+    });
+    
 
     /**
      * update detaild graph
@@ -935,7 +961,7 @@
         if (page === 1) {
           fadeOut(forwardExist).then(_ => forwardExist.parentNode.removeChild(forwardExist));
         }
-        const newCanvas = new Graph(bigGraphHeight, bigGraphWidth);
+        const newCanvas = new Graph(bigGraphHeight(), bigGraphWidth());
         dialog.appendChild(newCanvas.canvas);
         // stamp data to the new canvas
         newCanvas.drawGraph(log.host, returnLabels(log.history), graphData, dialog.querySelector('h2').dataset, (_ => {
@@ -1001,7 +1027,7 @@
      */
     reboot.addEventListener('click', e => {
       if (e.target.classList.contains('disabled-button')) return;
-      setTimeout(() => {
+      setTimeout(_ => {
         reboot.classList.add('disabled-button');
       }, 300);
       openRebootDialog();
