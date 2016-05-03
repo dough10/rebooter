@@ -1,355 +1,370 @@
 'use strict';
 
-const config = require(__dirname + '/config.json');
-const express = require('express');
-const https = require('https');
-const app = express();
-let server = app.listen(config.port);
-const io = require('socket.io')(server);
-const Ping = require ("ping-wrapper");
-const Data = require('nedb');
-const compression = require('compression');
-const network = require('network');
-const onoff = require('onoff').Gpio;
 
-
-app.disable('x-powered-by');
-Ping.configure();
-
-
-let failedRouterPings = 0;
-let hasRebooted = false;
-
-let history = new Data({
-  filename: __dirname + '/data/data.db',
-  autoload: true
-});
-
-let restarts = new Data({
-  filename: __dirname + '/data/restarts.db',
-  autoload: true
-});
-
-// import addresses from json file
-let addresses = config.addresses;
-
-// container for ping results
-let responses = [];
-
-// one minuite
-let oneMin = 60000;
-let oneHour = oneMin * 60;
-
-
-/**
- * check if given addres is valid
- *
- * @param {String} host - ip / url address
- */
-function isValidHost(host) {
-  for (let i = 0; i < addresses.length; i++) {
-    if (host === addresses[i]) return true;
-  }
-  return false;
-}
-
-
-/**
- * send data to client
- *
- * @param {String} name
- * @param {???} data - any data type can be sent
- */
-function emit(name, data) {
-  io.emit(name, data);
-}
-
-
-/**
- * output to console
- *
- * @param {string} message - message to display
- */
-function print (message) {
-  console.log(new Date().toLocaleString() + ':   ' + message);
-}
-
-
-/**
- * preform a ping test to a given url / address
- *
- * @param {String} url - url / ip to ping
- */
-function ping(url) {
-  return new Promise((resolve, reject) => {
-    let _ping = new Ping(url);
-    _ping.on('ping', data => {
-      resolve({
-        address: url,
-        data: data
-      });
-    });
-    _ping.on('fail', data => {
-      reject({
-        address: url,
-        data: false
-      });
-    });
-    setTimeout(() => {
-      _ping.stop();
-    }, 60000);
-  });
-}
-
-
-/**
- * reboot the router
- */
-function rebootRouter(type) {
-  hasRebooted = true;
-  emit('toast', 'rebooting router...');
-  // set up gpio
-  var gpio = onoff(config.relayPin, 'out');
-  gpio.write(1, _ => {
-    setTimeout(_ => {
-      restarts.insert({
-        time: new Date().getTime(),
-        type: type
-      }, err => pushRestarts(err));
-      emit('toast', 'powering on router...');
-      gpio.write(0, _ => {
-        print('router rebooted');
-      });
-    }, 35000);
-  });
-}
-
-
-/**
- * count failed pings
- *
- * @param {Array} items - list of ping results
- */
-function countResults(items) {
-  let count = 0;
-  const total = items.length;
-  let highPings = 0;
-  for (let i = 0; i < total; i++) {
-    if (!items[i].data) {
-      count++;
-      print('ping failed for ' + items[i].address);
-    }
-    if (items[i].data.hasOwnProperty('time') && items[i].data.time > config.maxPing) {
-      highPings++;
-      print(items[i].address + ' has ping greater then ' + config.maxPing);
-    }
-  }
-  // all pings returned with good time
-  if (!count && !highPings)
-    print('all pings successful');
-  if (count > 1)
-    hasRebooted = false;
-  if (count)
-    emit('toast', count + ' of ' + addresses.length + ' pings failed with ' + highPings + ' high pings');
-  // all pings failed
-  if (count === total && !hasRebooted)
-    rebootRouter('automated');
-  // half or more of the pings had high ping time
-  if (highPings >= Math.floor(addresses.length / 2) && !hasRebooted)
-    rebootRouter('automated');
-  console.timeEnd('all pings responded in');
-  pushHistory();
-}
-
-/**
- * update restarts on client
- *
- * @param {Error} err
- */
-function pushRestarts(err) {
-  if (err) print(err);
-  restarts.count({}, (err, count) => {
-    restarts.find().sort({time: 1}).skip((() => {
-      if (count > 10) {
-        return count - 10;
-      } else {
-        return 0;
-      }
-    })()).exec((err, logs) => emit('restarts', logs));
-  });
-}
-
-/**
- * update history on client
- *
- * @param {Error} err
- */
-function pushHistory(err) {
-  if (err) print(err);
-  let expected = config.graphLength * addresses.length;
-  history.count({}, (err, count) => {
-    let skip = (() => {
-      if (count > expected) {
-        return count - expected;
-      } else {
-        return 0;
-      }
-    })();
-    history.find({}).sort({
-      time: 1
-    }).skip(skip).limit(expected).exec((err, logs) => emit('history', logs));
-  });
-}
-
-function count(host) {
-  return new Promise(resolve => {
-    if (!isValidHost(host)) {
-      resolve({
-        status: 401,
-        host: host,
-        error: 'invalid host'
-      });
+class Rebooter {
+  
+  constructor(config) {
+    // early return of "config" is not a Object
+    if (typeof config !== 'object') {
+      throw new Error('Config must be an Object');
       return;
     }
-    history.count({
-      address: host
-    }, (err, count) => {
-      if (err) {
-        resolve({
+    this.config = config;
+    const _express = require('express');
+    const _app = _express();
+    const _compression = require('compression');
+    const _server = _app.listen(config.port);
+    this._socket = require('socket.io')(_server);
+    this._socket.on('connection', _socket => {
+      _socket.on('force-reboot', _ => this._rebootRouter('manual'));
+      _socket.on('count', host => this._count(host).then(count => this._emit('count', count)));
+      _socket.on('log', obj => this._getLogs(obj.host, obj.skip, obj.limit).then(log => this._emit('log', log)));
+      this._pushRestarts();
+      this._pushHistory();
+      // one off ping to lessen the delay for router status
+      // without could take +30 seconds to get status
+      this._network.get_gateway_ip((err, ip) => this._ping(ip).then(res => this._emit('router-status', res)));
+    });
+    
+    
+    this.PingWrapper = require ("ping-wrapper");
+    this.PingWrapper.configure();
+    
+    const Data = require('nedb');
+    this._history = new Data({
+      filename: __dirname + '/data/data.db',
+      autoload: true
+    });
+    this._restarts = new Data({
+      filename: __dirname + '/data/restarts.db',
+      autoload: true
+    });
+
+    _app.use(_compression());
+    _app.disable('x-powered-by');
+    
+    _app.use(_express.static(__dirname + '/html', {
+      maxAge: (60000 * 60) * 24
+    }));
+
+    _app.get('/count/:host', (req, res) => {
+      let host = req.params.host;
+      if (!host) {
+        res.status(500).send({
           status: 500,
           host: host,
-          error: err
+          error: 'invalid host'
         });
         return;
       }
-      resolve({
-        status: 200,
-        host: host,
-        count: count
+      this._count(host).then(count => res.status(count.status).send(count));
+    });
+
+
+    _app.get('/log/:host/:skip/:limit', (req, res) => {
+      let host = req.params.host;
+      let skip = parseInt(req.param.skip, 10);
+      let limit = parseInt(req.param.limit, 10);
+      this._getLogs(host, skip, limit).then(logs => res.status(logs.status).send(logs));
+    });
+    
+    this._network = require('network');
+    
+    //this.onoff = require('onoff').Gpio;
+    
+    this._hasRebooted = false;
+    this._failedRouterPings = 0;
+    
+    this._addresses = this.config.addresses;
+    this._responses = [];
+
+  }
+  
+  
+  /**
+   * check if given addres is valid
+   *
+   * @param {String} host - ip / url address
+   */
+  _isValidHost(host) {
+    for (let i = 0; i < this._addresses.length; i++) {
+      if (host === this._addresses[i]) return true;
+    }
+    return false;
+  }
+  
+  /**
+   * send data to client
+   *
+   * @param {String} name
+   * @param {???} data - any data type can be sent
+   */
+  _emit(name, data) {
+    this._socket.emit(name, data);
+  }
+
+  /**
+   * output to console
+   *
+   * @param {string} message - message to display
+   */
+  _print(message) {
+    console.log(new Date().toLocaleString() + ':   ' + message);
+  }
+  
+  /**
+   * preform a ping test to a given url / address
+   *
+   * @param {String} url - url / ip to ping
+   */
+  _ping(url) {
+    return new Promise(resolve => {
+      let _ping = new this.PingWrapper(url);
+      _ping.on('ping', data => {
+        resolve({
+          address: url,
+          data: data
+        });
+      });
+      _ping.on('fail', data => {
+        resolve({
+          address: url,
+          data: false
+        });
+      });
+      setTimeout(() => {
+        _ping.stop();
+      }, 60000);
+    });
+  }
+  
+  /**
+   * reboot the router
+   *
+   * @param {String} type - manual or automated
+   */
+  _rebootRouter(type) {
+    this._hasRebooted = true;
+    this._emit('toast', 'rebooting router...');
+    // set up gpio
+    const _gpio = this.onoff(this.config.relayPin, 'out');
+    _gpio.write(1, _ => {
+      setTimeout(_ => {
+        this._restarts.insert({
+          time: new Date().getTime(),
+          type: type
+        }, err => this._pushRestarts(err));
+        this._emit('toast', 'powering on router...');
+        _gpio.write(0, _ => {
+          this._print('router rebooted');
+        });
+      }, 35000);
+    });
+  }
+
+  /**
+   * count failed pings
+   *
+   * @param {Array} items - list of ping results
+   */
+  _countResults(items) {
+    let count = 0;
+    const total = items.length;
+    let highPings = 0;
+    for (let i = 0; i < total; i++) {
+      if (!items[i].data) {
+        count++;
+        this._print('ping failed for ' + items[i].address);
+      }
+      if (items[i].data.hasOwnProperty('time') && items[i].data.time > this.config.maxPing) {
+        highPings++;
+        this._print(items[i].address + ' has ping greater then ' + this.config.maxPing);
+      }
+    }
+    // all pings returned with good time
+    if (!count && !highPings)
+      this._print('all pings successful');
+    if (count > 1)
+      this._hasRebooted = false;
+    if (count)
+      this._emit('toast', count + ' of ' + this._addresses.length + ' pings failed with ' + highPings + ' high pings');
+    // all pings failed
+    if (count === total && !this._hasRebooted)
+      this._rebootRouter('automated');
+    // half or more of the pings had high ping time
+    if (highPings >= Math.floor(this._addresses.length / 2) && !this._hasRebooted)
+      this._rebootRouter('automated');
+    console.timeEnd('all pings responded in');
+    this._pushHistory();
+  }
+
+  /**
+   * update restarts on client
+   *
+   * @param {Error} err
+   */
+  _pushRestarts(err) {
+    if (err) this._print(err);
+    this._restarts.count({}, (err, count) => {
+      this._restarts.find().sort({time: 1}).skip((() => {
+        if (count > 10) {
+          return count - 10;
+        } else {
+          return 0;
+        }
+      })()).exec((err, logs) => this._emit('restarts', logs));
+    });
+  }
+
+  /**
+   * update history on client
+   *
+   * @param {Error} err
+   */
+  _pushHistory(err) {
+    if (err) this._print(err);
+    let expected = this.config.graphLength * this._addresses.length;
+    this._history.count({}, (err, count) => {
+      const skip = (_ => {
+        if (count > expected) {
+          return count - expected;
+        } else {
+          return 0;
+        }
+      })();
+      this._history.find({}).sort({
+        time: 1
+      }).skip(skip).limit(expected).exec((err, logs) => this._emit('history', logs));
+    });
+  }
+
+  /**
+   * Promise that returns a response object with 
+   * the number of ping data points for the given host
+   * 
+   * @param {String} host
+   */
+  _count(host) {
+    return new Promise(resolve => {
+      if (!this._isValidHost(host)) {
+        resolve({
+          status: 401,
+          host: host,
+          error: 'invalid host'
+        });
+        return;
+      }
+      this._history.count({
+        address: host
+      }, (err, count) => {
+        if (err) {
+          resolve({
+            status: 500,
+            host: host,
+            error: err
+          });
+          return;
+        }
+        resolve({
+          status: 200,
+          host: host,
+          count: count
+        });
       });
     });
-  });
-}
-
-function getLogs(host, skip, limit) {
-  return new Promise(resolve => {
-    if (!isValidHost(host)) {
-      resolve({
-        status: 401,
-        error: 'invalid host',
-        host: host
-      });
-      return;
-    }
-    history.find({
-      address: host
-    }).sort({
-      time: 1
-    }).skip(skip).limit(limit).exec((err, logs) => {
-      if (err) {
+  }
+  
+  /**
+   * Promise that resolves a response object with ping logs 
+   * from a given host with the provided limit & offset
+   *
+   * @param {String} host
+   * @param {Number} skip - offset
+   * @param {Number} limit
+   */
+  _getLogs(host, skip, limit) {
+    return new Promise(resolve => {
+      if (!this._isValidHost(host)) {
         resolve({
-          status: 500,
-          error: err,
+          status: 401,
+          error: 'invalid host',
           host: host
         });
         return;
       }
-      resolve({
-        status: 200,
-        history: logs,
-        host: host
-      })
+      this._history.find({
+        address: host
+      }).sort({
+        time: 1
+      }).skip(skip).limit(limit).exec((err, logs) => {
+        if (err) {
+          resolve({
+            status: 500,
+            error: err,
+            host: host
+          });
+          return;
+        }
+        resolve({
+          status: 200,
+          history: logs,
+          host: host
+        })
+      });
     });
-  });
-}
-
-
-
-function pingRouter(ip) {
-  setTimeout(() => {
-    pingRouter(ip);
-  }, 30000);
-  ping(ip).then(res => {
-    if (!res.data.hasOwnProperty('time')) {
-      failedRouterPings++;
-      if (failedRouterPings > 2) rebootRouter('automated');
-      return;
-    }
-    failedRouterPings = 0;
-    emit('router-status', res);
-  });
-}
-
-
-
-
-/**
- * ping responded
- *
- * @param {object} data - ping response data
- */
-function response(data) {
-  data.time = new Date().getTime();
-  history.insert(data);
-  responses.push(data);
-  if (responses.length === addresses.length) countResults(responses);
-}
-
-
-/**
- * start the test
- */
-function start() {
-  // set the timer for next
-  setTimeout(start, oneHour * config.repeat);
-  // clear responses array if it contains results
-  if (responses.length) responses = [];
-  // grab any new addresses from json file
-  addresses = require(__dirname + '/config.json').addresses;
-  print('running ping on ' + addresses.length + ' addresses');
-  console.time('all pings responded in');
-  // run ping on each address in the list
-  addresses.forEach(address => ping(address).then(response, response));
-}
-
-
-io.on('connection', socket => {
-  socket.on('force-reboot', () => rebootRouter('manual'));
-  socket.on('count', host => count(host).then(count => emit('count', count)));
-  socket.on('log', obj => getLogs(obj.host, obj.skip, obj.limit).then(log => emit('log', log)));
-  pushRestarts();
-  pushHistory();
-  network.get_gateway_ip((err, ip) => ping(ip).then(res => emit('router-status', res)));
-});
-
-app.use(compression());
-
-app.use(express.static(__dirname + '/html', {
-  maxAge: 86400000
-}));
-
-app.get('/count/:host', (req, res) => {
-  let host = req.params.host;
-  if (!host) {
-    res.status(500).send({
-      status: 500,
-      host: host,
-      error: 'invalid host'
-    });
-    return;
   }
-  count(host).then(count => res.status(count.status).send(count));
-});
 
+  /**
+   * ging the given router ip every 30 seconds
+   *
+   * @param {String} - ip
+   */
+  _pingRouter(ip) {
+    setTimeout(_ => {
+      this._pingRouter(ip);
+    }, 30000);
+    this._ping(ip).then(res => {
+      if (!res.data.hasOwnProperty('time')) {
+        this._failedRouterPings++;
+        if (this._failedRouterPings > 2) 
+          this._rebootRouter('automated');
+        return;
+      }
+      this._failedRouterPings = 0;
+      this._emit('router-status', res);
+    });
+  }
 
-app.get('/log/:host/:skip/:limit', (req, res) => {
-  let host = req.params.host;
-  let skip = parseInt(req.param.skip, 10);
-  let limit = parseInt(req.param.limit, 10);
-  getLogs(host, skip, limit).then(logs => res.status(logs.status).send(logs));
-});
+  /**
+   * ping responded
+   *
+   * @param {object} data - ping response data
+   */
+  _response(data) {
+    data.time = new Date().getTime();
+    this._history.insert(data);
+    this._responses.push(data);
+    if (this._responses.length === this._addresses.length) this._countResults(this._responses);
+  }
 
+  /**
+   * start the test
+   */
+  start() {
+    const oneMin = 60000;
+    const oneHour = oneMin * 60;
+    // set the timer for next
+    setTimeout(this.start.bind(this), oneHour * this.config.repeat);
+    // clear responses array if it contains results
+    if (this._responses.length) this._responses = [];
+    this._print('running ping on ' + this._addresses.length + ' addresses');
+    console.time('all pings responded in');
+    // run ping on each address in the list
+    this._addresses.forEach(address => this._ping(address).then(this._response.bind(this)));
+    this._network.get_gateway_ip((err, ip) => this._pingRouter(ip));
+  }
 
-// start pinging
-start();
-network.get_gateway_ip((err, ip) => pingRouter(ip));
+}
+const configFile = require(__dirname + '/config.json');
+const app = new Rebooter(configFile);
+app.start();

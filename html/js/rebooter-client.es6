@@ -57,14 +57,6 @@
       });
     }
 
-    /**
-     * returns the canvas HTML element
-     *
-     * used to style the element for animation setup
-     */
-    returnElement() {
-      return this.canvas;
-    }
   }
 
 
@@ -662,7 +654,7 @@
           if (winWidth < 400) return false;
           return true;
         })());
-        fadeIn(newGraph.returnElement()).then(_ => {
+        fadeIn(newGraph.canvas).then(_ => {
           const dialogTotalHeight = (graphDialog.offsetHeight + 48);
           const centerH = Math.floor((winHeight - 32) / 2);
           const centerDH = Math.floor(dialogTotalHeight / 2);
@@ -864,112 +856,115 @@
      * update detaild graph
      */
     socket.on('log', log => {
-      if (log.history.length) {
-        const dialog = document.querySelector('#chartDialog');
-        const oldCanvas = dialog.querySelector('canvas');
-        fadeOut(oldCanvas).then(_ => {
-          dialog.removeChild(oldCanvas);
-
-          const graphData = returnData(log.history);
-
-          // output pings
-          const texts = dialog.querySelectorAll('.high-low-text');
-          texts[0].textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
-          texts[1].textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
-
-          // work with buttons
-          const forwardExist = dialog.querySelector('#forwardButton');
-          if (forwardExist && forwardExist.classList.contains('icon-button-disabled'))
-            forwardExist.classList.remove('icon-button-disabled');
-
-          if (!forwardExist) {
-            const forward = new IconButton('arrow_forward');
-            forward.id = 'forwardButton';
-            forward.addEventListener('click', e => {
-              // early return if button is disabled
-              if (forward.classList.contains('icon-button-disabled')) return;
-              // disable the button
-              forward.classList.add('icon-button-disabled');
-              // show the loading screen
-              const graphLoader = document.querySelector('#graphDialogLoader');
-              graphLoader.style.pointerEvents = 'auto';
-              fadeIn(graphLoader).then(_ => {
-                const limit = log.history.length;
-                page--;
-                socket.emit('log', {
-                  host: log.host,
-                  limit: limit,
-                  skip: dataPoints - (limit * page)
-                });
-              });
-            });
-            forward.style.opacity = 0;
-            dialog.querySelector('#forwardB').appendChild(forward);
-            fadeIn(forward);
-          }
-
-
-          const prevExist = dialog.querySelector('#previousButton');
-          if (prevExist && prevExist.classList.contains('icon-button-disabled'))
-            prevExist.classList.remove('icon-button-disabled');
-
-          if (!prevExist) {
-            // previous button
-            const previous = new IconButton('arrow_back');
-            previous.id = 'previousButton';
-            previous.addEventListener('click', e => {
-              // early return if button is disabled
-              if (previous.classList.contains('icon-button-disabled')) return;
-              // disable the button
-              previous.classList.add('icon-button-disabled');
-              // show the loading screen
-              const graphLoader = document.querySelector('#graphDialogLoader');
-              graphLoader.style.pointerEvents = 'auto';
-              fadeIn(graphLoader).then(_ => {
-                const limit = log.history.length;
-                page++;
-                socket.emit('log', {
-                  host: log.host,
-                  limit: limit,
-                  skip: dataPoints - (limit * page)
-                });
-              });
-            });
-            previous.style.opacity = 0;
-            dialog.querySelector('#backB').appendChild(previous);
-            fadeIn(previous);
-          }
-
-          if (page >= Math.floor(maxPage)) {
-            fadeOut(prevExist).then(_ => prevExist.parentNode.removeChild(prevExist));
-          }
-
-          if (page === 1) {
-            fadeOut(forwardExist).then(_ => forwardExist.parentNode.removeChild(forwardExist));
-          }
-          const newCanvas = new Graph((_ => {
-            if (winHeight < 450) {
-              return 125;
-            } else {
-              return 250;
-            }
-          })(), winWidth - (80 + 32 + scrollWidth));
-          newCanvas.appendTo(dialog);
-          // stamp data to the new canvas
-          newCanvas.drawGraph(log.host, returnLabels(log.history), graphData, dialog.querySelector('h2').dataset, (_ => {
-            if (winWidth < 400) return false;
-            return true;
-          })());
-
-          // set up final transition
-          const newCanvasElement = newCanvas.returnElement();
-          newCanvasElement.style.opacity = 0;
-          const graphLoader = document.querySelector('#graphDialogLoader');
-          graphLoader.style.pointerEvents = 'none';
-          fadeIn(newCanvasElement);
-          fadeOut(graphLoader);
-        });
+      const graphLoader = document.querySelector('#graphDialogLoader');
+      if (!log.history.length) {
+        fadeOut(graphLoader);
+        return;
       }
+      const dialog = document.querySelector('#chartDialog');
+      if (!dialog) return;
+      const oldCanvas = dialog.querySelector('canvas');
+      fadeOut(oldCanvas).then(_ => {
+        dialog.removeChild(oldCanvas);
+
+        const graphData = returnData(log.history);
+
+        // output pings
+        const texts = dialog.querySelectorAll('.high-low-text');
+        texts[0].textContent = 'Highest Ping: ' + highestPing(graphData) + ' ms';
+        texts[1].textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
+
+        // work with buttons
+        const forwardExist = dialog.querySelector('#forwardButton');
+        if (forwardExist && forwardExist.classList.contains('icon-button-disabled'))
+          forwardExist.classList.remove('icon-button-disabled');
+
+        if (!forwardExist) {
+          const forward = new IconButton('arrow_forward');
+          forward.id = 'forwardButton';
+          forward.addEventListener('click', e => {
+            // early return if button is disabled
+            if (forward.classList.contains('icon-button-disabled')) return;
+            // disable the button
+            forward.classList.add('icon-button-disabled');
+            // show the loading screen
+            const graphLoader = document.querySelector('#graphDialogLoader');
+            graphLoader.style.pointerEvents = 'auto';
+            fadeIn(graphLoader).then(_ => {
+              const limit = log.history.length;
+              page--;
+              socket.emit('log', {
+                host: log.host,
+                limit: limit,
+                skip: dataPoints - (limit * page)
+              });
+            });
+          });
+          forward.style.opacity = 0;
+          dialog.querySelector('#forwardB').appendChild(forward);
+          fadeIn(forward);
+        }
+
+
+        const prevExist = dialog.querySelector('#previousButton');
+        if (prevExist && prevExist.classList.contains('icon-button-disabled'))
+          prevExist.classList.remove('icon-button-disabled');
+
+        if (!prevExist) {
+          // previous button
+          const previous = new IconButton('arrow_back');
+          previous.id = 'previousButton';
+          previous.addEventListener('click', e => {
+            // early return if button is disabled
+            if (previous.classList.contains('icon-button-disabled')) return;
+            // disable the button
+            previous.classList.add('icon-button-disabled');
+            // show the loading screen
+            const graphLoader = document.querySelector('#graphDialogLoader');
+            graphLoader.style.pointerEvents = 'auto';
+            fadeIn(graphLoader).then(_ => {
+              const limit = log.history.length;
+              page++;
+              socket.emit('log', {
+                host: log.host,
+                limit: limit,
+                skip: dataPoints - (limit * page)
+              });
+            });
+          });
+          previous.style.opacity = 0;
+          dialog.querySelector('#backB').appendChild(previous);
+          fadeIn(previous);
+        }
+
+        if (page >= Math.floor(maxPage)) {
+          fadeOut(prevExist).then(_ => prevExist.parentNode.removeChild(prevExist));
+        }
+
+        if (page === 1) {
+          fadeOut(forwardExist).then(_ => forwardExist.parentNode.removeChild(forwardExist));
+        }
+        const newCanvas = new Graph((_ => {
+          if (winHeight < 450) {
+            return 125;
+          } else {
+            return 250;
+          }
+        })(), winWidth - (80 + 32 + scrollWidth));
+        newCanvas.appendTo(dialog);
+        // stamp data to the new canvas
+        newCanvas.drawGraph(log.host, returnLabels(log.history), graphData, dialog.querySelector('h2').dataset, (_ => {
+          if (winWidth < 400) return false;
+          return true;
+        })());
+
+
+        newCanvas.canvas.style.opacity = 0;
+
+        graphLoader.style.pointerEvents = 'none';
+        fadeIn(newCanvas.canvas);
+        fadeOut(graphLoader);
+      });
     });
 
     /**
