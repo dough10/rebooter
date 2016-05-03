@@ -132,7 +132,7 @@ function rebootRouter(type) {
  */
 function countResults(items) {
   let count = 0;
-  let total = items.length;
+  const total = items.length;
   let highPings = 0;
   for (let i = 0; i < total; i++) {
     if (!items[i].data) {
@@ -145,13 +145,18 @@ function countResults(items) {
     }
   }
   // all pings returned with good time
-  if (!count && !highPings) print('all pings successful');
-  if count > 1) hasRebooted = false;
-  if (count) emit('toast', count + ' of ' + addresses.length + ' pings failed with ' + highPings + ' high pings');
+  if (!count && !highPings)
+    print('all pings successful');
+  if (count > 1)
+    hasRebooted = false;
+  if (count)
+    emit('toast', count + ' of ' + addresses.length + ' pings failed with ' + highPings + ' high pings');
   // all pings failed
-  if (count === total && !hasRebooted) rebootRouter('automated');
+  if (count === total && !hasRebooted)
+    rebootRouter('automated');
   // half or more of the pings had high ping time
-  if (highPings >= Math.floor(addresses.length / 2) && !hasRebooted) rebootRouter('automated');
+  if (highPings >= Math.floor(addresses.length / 2) && !hasRebooted)
+    rebootRouter('automated');
   console.timeEnd('all pings responded in');
   pushHistory();
 }
@@ -226,7 +231,7 @@ function count(host) {
   });
 }
 
-function getLogs(host, skip, limit , color) {
+function getLogs(host, skip, limit) {
   return new Promise(resolve => {
     if (!isValidHost(host)) {
       resolve({
@@ -252,8 +257,7 @@ function getLogs(host, skip, limit , color) {
       resolve({
         status: 200,
         history: logs,
-        host: host,
-        color: color
+        host: host
       })
     });
   });
@@ -312,7 +316,7 @@ function start() {
 io.on('connection', socket => {
   socket.on('force-reboot', () => rebootRouter('manual'));
   socket.on('count', host => count(host).then(count => emit('count', count)));
-  socket.on('log', obj => getLogs(obj.host, obj.skip, obj.limit, obj.color).then(log => emit('log', log)));
+  socket.on('log', obj => getLogs(obj.host, obj.skip, obj.limit).then(log => emit('log', log)));
   pushRestarts();
   pushHistory();
   network.get_gateway_ip((err, ip) => ping(ip).then(res => emit('router-status', res)));

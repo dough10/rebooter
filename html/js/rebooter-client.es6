@@ -148,9 +148,30 @@
   let socket;
   let page = 1;
   let maxPage;
-  let winHeight = window.innerHeight;
-  let scrollWidth = scrollbarWidth();
-  let winWidth = window.innerWidth;
+  let winHeight;
+  let scrollWidth;
+  let winWidth;
+  let bigGraphHeight;
+  let bigGraphWidth;
+  let cardWidth;
+
+  function getWindowSize() {
+    winHeight = window.innerHeight;
+    scrollWidth = scrollbarWidth();
+    winWidth = window.innerWidth;
+    cardWidth = document.querySelector('#card').offsetWidth;
+    bigGraphHeight = (_ => {
+      if (winHeight < 450) {
+        return 125;
+      } else {
+        return 250;
+      }
+    })();
+
+    bigGraphWidth = (_ => {
+      return winWidth - (80 + 32 + scrollWidth);
+    })();
+  }
 
   /**
    * return readable time sence a given date
@@ -464,7 +485,7 @@
       const graphData = returnData(data[key]);
       const graphColor = getRandomColor();
       // create canvas
-      const canvas = new Graph(100, card.offsetWidth - 48, 'none');
+      const canvas = new Graph(100, cardWidth - 48, 'none');
       canvas.appendTo(canvasWrapper);
       canvas.drawGraph(key, returnBlankLabel(data[key]), graphData, graphColor, false);
       fadeIn(div);
@@ -490,11 +511,11 @@
         const right = document.createElement('div');
         const close = new IconButton('close');
         close.style.color = 'red';
-        close.addEventListener('click', e => {
+        close.addEventListener('click', _ => {
           dialog.classList.remove('dialog-opened');
-          setTimeout(() => {
+          dialog.addEventListener('transitionend', _ => {
             body.removeChild(dialog);
-          }, 400);
+          });
         });
         right.appendChild(close);
         spaceBetween.appendChild(right);
@@ -526,13 +547,7 @@
         dialog.appendChild(buttonBar);
 
         // create the canvas
-        const detailedCanvas = new Graph((_ => {
-          if (winHeight < 450) {
-            return 125;
-          } else {
-            return 250;
-          }
-        })(), winWidth - (80 + 32 + scrollWidth));
+        const detailedCanvas = new Graph(bigGraphHeight, bigGraphWidth);
         detailedCanvas.appendTo(dialog);
         // send dialog to DOM
         body.appendChild(dialog);
@@ -542,7 +557,9 @@
         const centerDH = Math.floor(dialogTotalHeight / 2);
         dialog.style.top = Math.floor(centerH - centerDH) + 'px';
         dialog.style.left = '0px';
-
+        for (let index in graphColor) {
+          label.dataset[index] = graphColor[index];
+        }
         // draw the detailed graph
         detailedCanvas.drawGraph(key, returnLabels(data[key]), graphData, graphColor, (() => {
           if (winWidth < 400) return false;
@@ -574,12 +591,14 @@
                 socket.emit('log', {
                   host: key,
                   limit: limit,
-                  skip: count.count - (limit * page),
-                  color: {
-                    r: graphColor.r,
-                    g: graphColor.g,
-                    b: graphColor.b
-                  }
+                  skip: (_ => {
+                    const skip = count.count - (limit * page);
+                    if (skip < 0) {
+                      return 0;
+                    } else {
+                      return skip;
+                    }
+                  })()
                 });
               });
             });
@@ -616,23 +635,41 @@
    */
   function positionThings() {
     // reboot dialog
-    let dialog = document.querySelector('#reboot-dialog');
-    let centerH = Math.floor((winHeight - 32) / 2);
-    let centerW = Math.floor((winWidth - 32) / 2);
-    let centerDH = Math.floor((dialog.offsetHeight + 24) / 2);
-    let centerDW = Math.floor((dialog.offsetWidth + 40) / 2);
-    let top = Math.floor(centerH - centerDH) + 'px';
-    let left = Math.floor(centerW - centerDW) + 'px';
-    dialog.style.top = top;
-    dialog.style.left = left;
+    const rDialog = document.querySelector('#reboot-dialog');
+    const centerH = Math.floor((winHeight - 32) / 2);
+    const centerW = Math.floor((winWidth - 32) / 2);
+    const centerDH = Math.floor((rDialog.offsetHeight + 24) / 2);
+    const centerDW = Math.floor((rDialog.offsetWidth + 40) / 2);
+    const top = Math.floor(centerH - centerDH) + 'px';
+    const left = Math.floor(centerW - centerDW) + 'px';
+    rDialog.style.top = top;
+    rDialog.style.left = left;
     // fab
     let fab = document.querySelector('#fab');
     let cardWidth = document.querySelector('#card').offsetWidth;
     fab.style.right = (centerW - (cardWidth / 2)) + 20 + 'px';
     // graph dialog
-    let graphDialog = document.querySelector('#chartDialog');
+    const graphDialog = document.querySelector('#chartDialog');
     if (graphDialog) {
-      console.log(graphDialog);
+      const oldGraph = graphDialog.querySelector('canvas');
+      fadeOut(oldGraph).then(_ => {
+        graphDialog.removeChild(oldGraph);
+        const label = graphDialog.querySelector('h2');
+        const newGraph =  new Graph(bigGraphHeight, bigGraphWidth);
+        newGraph.appendTo(graphDialog);
+        const host = label.textContent;
+        newGraph.drawGraph(host, returnLabels(appData[host]), returnData(appData[host]), label.dataset, (() => {
+          if (winWidth < 400) return false;
+          return true;
+        })());
+        fadeIn(newGraph.returnElement()).then(_ => {
+          const dialogTotalHeight = (graphDialog.offsetHeight + 48);
+          const centerH = Math.floor((winHeight - 32) / 2);
+          const centerDH = Math.floor(dialogTotalHeight / 2);
+          graphDialog.style.top = Math.floor(centerH - centerDH) + 'px';
+          graphDialog.style.left = '0px';
+        })
+      });
     }
   }
 
@@ -702,9 +739,7 @@
   // redraw graphs on window reload
   let timer = 0;
   window.onresize = _ => {
-    winHeight = window.innerHeight;
-    scrollWidth = scrollbarWidth();
-    winWidth = window.innerWidth;
+    getWindowSize()
     if (timer) {
       clearTimeout(timer);
       timer = 0;
@@ -718,7 +753,9 @@
 
   // run the app
   window.onload = _ => {
-    
+
+    getWindowSize();
+
     positionThings();
 
     // fade card opacity
@@ -780,9 +817,7 @@
 
 
     // socket.io setup
-    socket = io.connect(location.origin, {
-      'secure': true
-    });
+    socket = io.connect(location.origin);
 
     /**
      * socket connected
@@ -864,12 +899,7 @@
                 socket.emit('log', {
                   host: log.host,
                   limit: limit,
-                  skip: dataPoints - (limit * page),
-                  color: {
-                    r: log.color.r,
-                    g: log.color.g,
-                    b: log.color.b
-                  }
+                  skip: dataPoints - (limit * page)
                 });
               });
             });
@@ -901,12 +931,7 @@
                 socket.emit('log', {
                   host: log.host,
                   limit: limit,
-                  skip: dataPoints - (limit * page),
-                  color: {
-                    r: log.color.r,
-                    g: log.color.g,
-                    b: log.color.b
-                  }
+                  skip: dataPoints - (limit * page)
                 });
               });
             });
@@ -931,7 +956,7 @@
           })(), winWidth - (80 + 32 + scrollWidth));
           newCanvas.appendTo(dialog);
           // stamp data to the new canvas
-          newCanvas.drawGraph(log.host, returnLabels(log.history), graphData, log.color, (_ => {
+          newCanvas.drawGraph(log.host, returnLabels(log.history), graphData, dialog.querySelector('h2').dataset, (_ => {
             if (winWidth < 400) return false;
             return true;
           })());
