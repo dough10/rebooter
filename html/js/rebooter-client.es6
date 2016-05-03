@@ -18,15 +18,6 @@
     }
 
     /**
-     * append the canvas to a element
-     *
-     * @param {htmlElement} el
-     */
-    appendTo(el) {
-      el.appendChild(this.canvas);
-    }
-
-    /**
      * draw data to the graph
      *
      * @param {String} host
@@ -478,7 +469,7 @@
       const graphColor = getRandomColor();
       // create canvas
       const canvas = new Graph(100, cardWidth - 48, 'none');
-      canvas.appendTo(canvasWrapper);
+      canvasWrapper.appendChild(canvas.canvas);
       canvas.drawGraph(key, returnBlankLabel(data[key]), graphData, graphColor, false);
       fadeIn(div);
       const loader = document.querySelector('#loader');
@@ -540,7 +531,7 @@
 
         // create the canvas
         const detailedCanvas = new Graph(bigGraphHeight, bigGraphWidth);
-        detailedCanvas.appendTo(dialog);
+        dialog.appendChild(detailedCanvas.canvas);
         // send dialog to DOM
         body.appendChild(dialog);
         // position the dialog
@@ -648,7 +639,7 @@
         graphDialog.removeChild(oldGraph);
         const label = graphDialog.querySelector('h2');
         const newGraph =  new Graph(bigGraphHeight, bigGraphWidth);
-        newGraph.appendTo(graphDialog);
+        graphDialog.appendChild(newGraph.canvas);
         const host = label.textContent;
         newGraph.drawGraph(host, returnLabels(appData[host]), returnData(appData[host]), label.dataset, (() => {
           if (winWidth < 400) return false;
@@ -944,20 +935,13 @@
         if (page === 1) {
           fadeOut(forwardExist).then(_ => forwardExist.parentNode.removeChild(forwardExist));
         }
-        const newCanvas = new Graph((_ => {
-          if (winHeight < 450) {
-            return 125;
-          } else {
-            return 250;
-          }
-        })(), winWidth - (80 + 32 + scrollWidth));
-        newCanvas.appendTo(dialog);
+        const newCanvas = new Graph(bigGraphHeight, bigGraphWidth);
+        dialog.appendChild(newCanvas.canvas);
         // stamp data to the new canvas
         newCanvas.drawGraph(log.host, returnLabels(log.history), graphData, dialog.querySelector('h2').dataset, (_ => {
           if (winWidth < 400) return false;
           return true;
         })());
-
 
         newCanvas.canvas.style.opacity = 0;
 
