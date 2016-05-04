@@ -2,7 +2,7 @@
 
 
 class Rebooter {
-  
+
   constructor(config) {
     // early return of "config" is not a Object
     if (typeof config !== 'object') {
@@ -25,11 +25,11 @@ class Rebooter {
       // without could take +30 seconds to get status
       this._network.get_gateway_ip((err, ip) => this._ping(ip).then(res => this._emit('router-status', res)));
     });
-    
-    
+
+
     this.PingWrapper = require ("ping-wrapper");
     this.PingWrapper.configure();
-    
+
     const Data = require('nedb');
     this._history = new Data({
       filename: __dirname + '/data/data.db',
@@ -42,7 +42,7 @@ class Rebooter {
 
     _app.use(_compression());
     _app.disable('x-powered-by');
-    
+
     _app.use(_express.static(__dirname + '/html', {
       maxAge: (60000 * 60) * 24
     }));
@@ -67,20 +67,20 @@ class Rebooter {
       let limit = parseInt(req.param.limit, 10);
       this._getLogs(host, skip, limit).then(logs => res.status(logs.status).send(logs));
     });
-    
+
     this._network = require('network');
-    
-    //this.onoff = require('onoff').Gpio;
-    
+
+    this.onoff = require('onoff').Gpio;
+
     this._hasRebooted = false;
     this._failedRouterPings = 0;
-    
+
     this._addresses = this.config.addresses;
     this._responses = [];
 
   }
-  
-  
+
+
   /**
    * check if given addres is valid
    *
@@ -92,7 +92,7 @@ class Rebooter {
     }
     return false;
   }
-  
+
   /**
    * send data to client
    *
@@ -111,7 +111,7 @@ class Rebooter {
   _print(message) {
     console.log(new Date().toLocaleString() + ':   ' + message);
   }
-  
+
   /**
    * preform a ping test to a given url / address
    *
@@ -137,7 +137,7 @@ class Rebooter {
       }, 60000);
     });
   }
-  
+
   /**
    * reboot the router
    *
@@ -239,9 +239,9 @@ class Rebooter {
   }
 
   /**
-   * Promise that returns a response object with 
+   * Promise that returns a response object with
    * the number of ping data points for the given host
-   * 
+   *
    * @param {String} host
    */
   _count(host) {
@@ -273,9 +273,9 @@ class Rebooter {
       });
     });
   }
-  
+
   /**
-   * Promise that resolves a response object with ping logs 
+   * Promise that resolves a response object with ping logs
    * from a given host with the provided limit & offset
    *
    * @param {String} host
@@ -326,7 +326,7 @@ class Rebooter {
     this._ping(ip).then(res => {
       if (!res.data.hasOwnProperty('time')) {
         this._failedRouterPings++;
-        if (this._failedRouterPings > 2) 
+        if (this._failedRouterPings > 2)
           this._rebootRouter('automated');
         return;
       }

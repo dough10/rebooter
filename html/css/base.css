@@ -315,10 +315,13 @@ header {
   font-size: 12px;
   margin-bottom: 4px;
 }
-.js-animate {
+.js-minHeight44 {
+  min-height: 44px;
+}
+/*.js-animate {
   will-change: opacity;
   transition: opacity .5s ease-in-out;
-}
+}*/
 .icon-button-disabled {
   cursor: auto;
   pointer-events: none;

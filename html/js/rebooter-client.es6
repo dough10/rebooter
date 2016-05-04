@@ -173,6 +173,7 @@
       const buttonBar = document.createElement('div');
       buttonBar.classList.add('flex');
       buttonBar.classList.add('space-between');
+      buttonBar.classList.add('js-minHeight44');
       const back = document.createElement('div');
       back.id = 'backB';
       const forward = document.createElement('div');
@@ -192,11 +193,17 @@
   let socket;
   let page = 1;
   let maxPage;
-  let winHeight;
+
+  // size of the window of things in the window
   let scrollWidth;
   let winWidth;
+  let winHeight;
   let cardWidth;
 
+
+  /**
+   * returns the height of a large graph
+   */
   function bigGraphHeight() {
     if (winHeight < 450) {
       return 125;
@@ -205,11 +212,22 @@
     }
   }
 
+
+  /**
+   * rturns the width of a large graph
+   */
   function bigGraphWidth() {
     return winWidth - (80 + 32 + scrollWidth);
   }
 
+  function useTooltips() {
+    if (winWidth < 400) return false;
+    return true;
+  }
 
+  /**
+   * capture the window & content deminsions
+   */
   function getWindowSize() {
     winHeight = window.innerHeight;
     scrollWidth = scrollbarWidth();
@@ -290,14 +308,17 @@
     return new Promise(resolve => {
       const animationEnd = _ => {
         el.removeEventListener("transitionend", animationEnd);
-        el.classList.remove('js-animate');
+        el.style.willChange = 'initial';
+        el.style.transition = 'initial';
         resolve();
       };
-      el.classList.add('js-animate');
+      el.addEventListener("transitionend", animationEnd, true);
+      el.style.willChange = 'opacity';
+      el.style.transition = 'opacity .5s ease-in-out';
       requestAnimationFrame(_ => {
         el.style.opacity = 1;
       });
-      el.addEventListener("transitionend", animationEnd, true);
+
     });
   }
 
@@ -310,14 +331,16 @@
     return new Promise(resolve => {
       const animationEnd = _ => {
         el.removeEventListener("transitionend", animationEnd);
-        el.classList.remove('js-animate');
+        el.style.willChange = 'initial';
+        el.style.transition = 'initial';
         resolve();
       };
-      el.classList.add('js-animate');
+      el.addEventListener("transitionend", animationEnd, true);
+      el.style.willChange = 'opacity';
+      el.style.transition = 'opacity .5s ease-in-out';
       requestAnimationFrame(_ => {
         el.style.opacity = 0;
       });
-      el.addEventListener("transitionend", animationEnd, true);
     });
   }
 
@@ -506,12 +529,13 @@
    */
   function closeExistingGraph() {
     return new Promise(resolve => {
-      const exist = document.querySelector('#chartDialog');
+      let exist = document.querySelector('#chartDialog');
       const body = document.querySelector('body');
       if (exist) {
         const transitionEnd = _ => {
           exist.removeEventListener('transitionend', transitionEnd);
           body.removeChild(exist);
+          exist = null;
           resolve();
         };
         exist.addEventListener('transitionend', transitionEnd);
@@ -522,30 +546,36 @@
     });
   }
 
-
+  /**
+   * creates and opens a new detailed graph dialog
+   */
   function openDialog(host, labels, graphData, graphColor) {
     page = 1;
     // create teh dialog
     const dialog = new Dialog(host, highestPing(graphData), lowestPing(graphData), graphColor);
     // create the canvas
     const detailedCanvas = new Graph(bigGraphHeight(), bigGraphWidth());
+    detailedCanvas.canvas.style.opacity = 0;
+
+    const transitionEnd = _ => {
+      dialog.removeEventListener('transitionend', transitionEnd);
+      // draw the detailed graph
+
+      fadeIn(detailedCanvas.canvas).then(_ => socket.emit('count', host));
+    };
+
     // append canvas to dialog
     dialog.appendChild(detailedCanvas.canvas);
+    dialog.addEventListener('transitionend', transitionEnd);
     // send dialog to DOM
     document.querySelector('body').appendChild(dialog);
-    // draw the detailed graph
-    detailedCanvas.drawGraph(host, labels, graphData, graphColor, (_ => {
-      if (winWidth < 400) return false;
-      return true;
-    })());
+    detailedCanvas.drawGraph(host, labels, graphData, graphColor, useTooltips());
     // position the dialog
     const dialogTotalHeight = (dialog.offsetHeight + 48);
     const centerH = Math.floor((winHeight - 32) / 2);
     const centerDH = Math.floor(dialogTotalHeight / 2);
     dialog.style.top = Math.floor(centerH - centerDH) + 'px';
     dialog.style.left = '0px';
-    // get count of data points
-    socket.emit('count', host);
     // open the dialog
     setTimeout(_ => {
       dialog.classList.add('dialog-opened');
@@ -632,18 +662,19 @@
     const left = Math.floor(centerW - centerDW) + 'px';
     rDialog.style.top = top;
     rDialog.style.left = left;
-    
+
     // fab
     let fab = document.querySelector('#fab');
     let cardWidth = document.querySelector('#card').offsetWidth;
     fab.style.right = (centerW - (cardWidth / 2)) + 20 + 'px';
-    
+
     // graph dialog
     const graphDialog = document.querySelector('#chartDialog');
     if (!graphDialog) return;
-    const oldGraph = graphDialog.querySelector('canvas');
+    let oldGraph = graphDialog.querySelector('canvas');
     fadeOut(oldGraph).then(_ => {
       graphDialog.removeChild(oldGraph);
+      oldGraph = null;
       const label = graphDialog.querySelector('h2');
       const newGraph =  new Graph(bigGraphHeight(), bigGraphWidth());
       graphDialog.appendChild(newGraph.canvas);
@@ -826,8 +857,8 @@
       appData = data;
       graphData(data);
     }));
-    
-    
+
+
     /**
      * count how many data pointes for a host
      */
@@ -835,39 +866,39 @@
       const dialog = document.querySelector('#chartDialog');
       dataPoints = count.count;
       maxPage = count.count / appData[count.host].length;
-      if (count.count > appData[count.host].length) {
-        // previous button
-        const previous = new IconButton('arrow_back');
-        previous.id = 'previousButton';
-        previous.addEventListener('click', e => {
-          // early return if button is disabled
-          if (previous.classList.contains('icon-button-disabled')) return;
-          // disable the button
-          previous.classList.add('icon-button-disabled')
-          // show the loading screen
-          const graphLoader = dialog.querySelector('#graphDialogLoader');
-          graphLoader.style.pointerEvents = 'auto';
-          fadeIn(graphLoader).then(_ => {
-            const limit = appData[count.host].length;
-            page++;
-            socket.emit('log', {
-              host: count.host,
-              limit: limit,
-              skip: (_ => {
-                const skip = count.count - (limit * page);
-                if (skip < 0) {
-                  return 0;
-                } else {
-                  return skip;
-                }
-              })()
-            });
+      if (count.count <= appData[count.host].length)
+        return;
+      // previous button
+      const previous = new IconButton('arrow_back');
+      previous.id = 'previousButton';
+      previous.addEventListener('click', e => {
+        // early return if button is disabled
+        if (previous.classList.contains('icon-button-disabled')) return;
+        // disable the button
+        previous.classList.add('icon-button-disabled')
+        // show the loading screen
+        const graphLoader = dialog.querySelector('#graphDialogLoader');
+        graphLoader.style.pointerEvents = 'auto';
+        fadeIn(graphLoader).then(_ => {
+          const limit = appData[count.host].length;
+          page++;
+          socket.emit('log', {
+            host: count.host,
+            limit: limit,
+            skip: (_ => {
+              const skip = count.count - (limit * page);
+              if (skip < 0) {
+                return 0;
+              } else {
+                return skip;
+              }
+            })()
           });
         });
-        dialog.querySelector('#backB').appendChild(previous);
-      }
+      });
+      dialog.querySelector('#backB').appendChild(previous);
     });
-    
+
 
     /**
      * update detaild graph
@@ -880,10 +911,10 @@
       }
       const dialog = document.querySelector('#chartDialog');
       if (!dialog) return;
-      const oldCanvas = dialog.querySelector('canvas');
+      let oldCanvas = dialog.querySelector('canvas');
       fadeOut(oldCanvas).then(_ => {
         dialog.removeChild(oldCanvas);
-
+        oldCanvas = null;
         const graphData = returnData(log.history);
 
         // output pings
@@ -892,7 +923,7 @@
         texts[1].textContent = 'Lowest Ping: ' + lowestPing(graphData) + ' ms';
 
         // work with buttons
-        const forwardExist = dialog.querySelector('#forwardButton');
+        let forwardExist = dialog.querySelector('#forwardButton');
         if (forwardExist && forwardExist.classList.contains('icon-button-disabled'))
           forwardExist.classList.remove('icon-button-disabled');
 
@@ -923,7 +954,7 @@
         }
 
 
-        const prevExist = dialog.querySelector('#previousButton');
+        let prevExist = dialog.querySelector('#previousButton');
         if (prevExist && prevExist.classList.contains('icon-button-disabled'))
           prevExist.classList.remove('icon-button-disabled');
 
@@ -955,22 +986,23 @@
         }
 
         if (page >= Math.floor(maxPage)) {
-          fadeOut(prevExist).then(_ => prevExist.parentNode.removeChild(prevExist));
+          fadeOut(prevExist).then(_ => {
+            prevExist.parentNode.removeChild(prevExist);
+            prevExist = null;
+          });
         }
 
         if (page === 1) {
-          fadeOut(forwardExist).then(_ => forwardExist.parentNode.removeChild(forwardExist));
+          fadeOut(forwardExist).then(_ => {
+            forwardExist.parentNode.removeChild(forwardExist);
+            forwardExist = null;
+          });
         }
         const newCanvas = new Graph(bigGraphHeight(), bigGraphWidth());
         dialog.appendChild(newCanvas.canvas);
         // stamp data to the new canvas
-        newCanvas.drawGraph(log.host, returnLabels(log.history), graphData, dialog.querySelector('h2').dataset, (_ => {
-          if (winWidth < 400) return false;
-          return true;
-        })());
-
+        newCanvas.drawGraph(log.host, returnLabels(log.history), graphData, dialog.querySelector('h2').dataset, useTooltips());
         newCanvas.canvas.style.opacity = 0;
-
         graphLoader.style.pointerEvents = 'none';
         fadeIn(newCanvas.canvas);
         fadeOut(graphLoader);
@@ -998,7 +1030,8 @@
         startRebootTimer();
       }
       // enable button if router reboot has finished
-      if (message === 'powering on router...') reboot.classList.remove('disabled-button');
+      if (message === 'powering on router...')
+        reboot.classList.remove('disabled-button');
       new Toast(message);
     });
 
