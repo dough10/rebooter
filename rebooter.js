@@ -70,7 +70,7 @@ class Rebooter {
 
     this._network = require('network');
 
-    this.onoff = require('onoff').Gpio;
+    //this.onoff = require('onoff').Gpio;
 
     this._hasRebooted = false;
     this._failedRouterPings = 0;
