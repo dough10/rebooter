@@ -212,7 +212,7 @@ header {
 .hidden {
   opacity: 0;
 }
-#reboot-dialog-reboot {
+.purple {
   color: #fff;
   background: #673AB7;
 }
@@ -319,4 +319,48 @@ header {
   cursor: auto;
   pointer-events: none;
   color: #ccc;
+}
+.group {
+  position: relative;
+  margin-top:20px;
+  margin-bottom: 24px;
+}
+input {
+  font-size: 14px;
+  padding: 10px 10px 10px 5px;
+  display: block;
+  width: 90%;
+  border: none;
+  border-bottom: 1px solid #757575;
+}
+input:focus {
+  outline: none;
+}
+label {
+  color: #999;
+  font-size: 14px;
+  font-weight: normal;
+  position: absolute;
+  pointer-events: none;
+  left: 5px;
+  top: 10px;
+  transition: 0.2s ease all;
+}
+input:focus ~ label,
+input:valid ~ label {
+  top: -20px;
+  font-size: 14px;
+  color: #673AB7;
+}
+input:invalid {
+}
+.link {
+  cursor: pointer;
+  padding: 4px;
+  margin:auto;
+  font-size: 10px;
+  margin-bottom: 16px;
+}
+.red {
+  color: red;
 }

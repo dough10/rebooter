@@ -172,6 +172,7 @@
       const buttonBar = document.createElement('div');
       buttonBar.classList.add('flex');
       buttonBar.classList.add('space-between');
+      buttonBar.style.minHeight = '44px';
       const back = document.createElement('div');
       const previous = new IconButton('arrow_back');
       previous.id = 'previousButton';
@@ -180,6 +181,7 @@
       previous.addEventListener('click', e => {
         loading.style.pointerEvents = 'auto';
         fadeIn(loading).then(_ => {
+          page++;
           const limit = appData[host].length;
           const skip = (_ => {
             const skip = dataPoints - (limit * page);
@@ -189,7 +191,6 @@
               return skip;
             }
           })();
-          page++;
           socket.emit('log', {
             host: host,
             limit: limit,
@@ -689,25 +690,37 @@
   }
 
 
+  function findDialogPos(dialog) {
+    const centerH = Math.floor((winHeight - 32) / 2);
+    const centerW = Math.floor((winWidth - 32) / 2);
+    const centerDH = Math.floor((dialog.offsetHeight + 24) / 2);
+    const centerDW = Math.floor((dialog.offsetWidth + 40) / 2);
+    return {
+      top: Math.floor(centerH - centerDH) + 'px',
+      left:  Math.floor(centerW - centerDW) + 'px'
+    }
+  }
+
+
   /**
    * position placement of restart dialog
    */
   function positionThings() {
     // reboot dialog
     const rDialog = document.querySelector('#reboot-dialog');
-    const centerH = Math.floor((winHeight - 32) / 2);
-    const centerW = Math.floor((winWidth - 32) / 2);
-    const centerDH = Math.floor((rDialog.offsetHeight + 24) / 2);
-    const centerDW = Math.floor((rDialog.offsetWidth + 40) / 2);
-    const top = Math.floor(centerH - centerDH) + 'px';
-    const left = Math.floor(centerW - centerDW) + 'px';
-    rDialog.style.top = top;
-    rDialog.style.left = left;
+    const rebootPos = findDialogPos(rDialog);
+    rDialog.style.top = rebootPos.top;
+    rDialog.style.left = rebootPos.left;
+    
+    const loginDialog = document.querySelector('#login-dialog');
+    const loginPos = findDialogPos(loginDialog);
+    loginDialog.style.top = loginPos.top;
+    loginDialog.style.left = loginPos.left;
+    
 
     // fab
     let fab = document.querySelector('#fab');
-    let cardWidth = document.querySelector('#card').offsetWidth;
-    fab.style.right = (centerW - (cardWidth / 2)) + 20 + 'px';
+    fab.style.right = (((winWidth - 32) / 2) - (cardWidth / 2)) + 25 + 'px';
 
     // graph dialog
     const graphDialog = document.querySelector('#chartDialog');
@@ -722,11 +735,9 @@
       graphDialog.appendChild(newGraph.canvas);
       newGraph.drawGraph(host, returnLabels(appData[host]), returnData(appData[host]), label.dataset, useTooltips());
       fadeIn(newGraph.canvas).then(_ => {
-        const dialogTotalHeight = (graphDialog.offsetHeight + 48);
-        const centerH = Math.floor((winHeight - 32) / 2);
-        const centerDH = Math.floor(dialogTotalHeight / 2);
-        graphDialog.style.top = Math.floor(centerH - centerDH) + 'px';
-        graphDialog.style.left = '0px';
+        const pos = findDialogPos(graphDialog);
+        graphDialog.style.top = pos.top;
+        graphDialog.style.left = pos.left;
       })
     }));
 
@@ -770,6 +781,23 @@
     });
   }
 
+  /**
+   * fade out the login button and fade in the reboot button
+   */
+  function switchButtons() {
+    const reboot = document.querySelector('#reboot');
+    const loginButton = document.querySelector('#loginButton');
+    fadeOut(loginButton).then(_ => {
+      requestAnimationFrame(_ => {
+        loginButton.style.display = 'none';
+        reboot.style.display = 'flex';
+        fadeIn(reboot).then(_ => {
+          console.log('fuck yeah')
+        });
+      });
+    });
+  }
+
 
   // redraw graphs on window reload
   let timer = 0;
@@ -788,12 +816,12 @@
   // run the app
   window.onload = _ => {
 
-    getWindowSize();
-
-    positionThings();
+    requestAnimationFrame(_ => getWindowSize().then(positionThings));
 
     // fade card opacity
     const reboot = document.querySelector('#reboot');
+    reboot.style.display = 'none';
+    reboot.style.opacity = 0;
     const rebootClose = document.querySelector('#reboot-dialog-close');
     const rebootButton = document.querySelector('#reboot-dialog-reboot');
     const appWrapper = document.querySelector('.wrapper');
@@ -808,6 +836,17 @@
       [].slice.call(buttons).forEach(button => {
         button.PaperRipple = new PaperRipple();
         button.appendChild(button.PaperRipple.$);
+        button.addEventListener('mousedown', ev => button.PaperRipple.downAction(ev));
+        button.addEventListener('mouseup', e => button.PaperRipple.upAction());
+      });
+      
+      const iconButtons = document.querySelectorAll('.icon-button');
+      [].slice.call(iconButtons).forEach(button => {
+        button.PaperRipple = new PaperRipple();
+        button.appendChild(button.PaperRipple.$);
+        button.PaperRipple.$.classList.add('paper-ripple--round');
+        button.PaperRipple.recenters = true;
+        button.PaperRipple.center = true;
         button.addEventListener('mousedown', ev => button.PaperRipple.downAction(ev));
         button.addEventListener('mouseup', e => button.PaperRipple.upAction());
       });
@@ -902,10 +941,10 @@
       const dialog = document.querySelector('#chartDialog');
 
       dataPoints = count.count;
-      maxPage = Math.rount(count.count / appData[count.host].length);
+      maxPage = Math.round(count.count / appData[count.host].length);
       if (count.count <= appData[count.host].length)
         return;
-      // previous button
+      // enable button
       let prev = dialog.querySelector('#previousButton');
       prev.style.display = 'flex';
       fadeIn(prev);
@@ -986,9 +1025,10 @@
     socket.on('toast', message => {
       if (message === 'rebooting router...') {
         // ensure button is disabled
-        reboot.classList.add('disabled-button')
-        // start the animation
-        startRebootTimer();
+        if (!reboot.classList.contains('disabled-button')) {
+          reboot.classList.add('disabled-button');
+          startRebootAnimation();
+        }
       }
       // enable button if router reboot has finished
       if (message === 'powering on router...')
@@ -1030,15 +1070,43 @@
     /**
      * close reboot dialog
      */
-    rebootClose.addEventListener('click', _ => closeRebootDialog().then(_ => {
-      reboot.classList.remove('disabled-button');
-    }));
+    rebootClose.addEventListener('click', _ => closeRebootDialog()
+      .then(_ => reboot.classList.remove('disabled-button')));
 
     /**
      * close reboot dialog and reboot
      */
     rebootButton.addEventListener('click', _ => closeRebootDialog().then(_ => {
+      startRebootTimer();
       socket.emit('force-reboot');
     }));
+    
+    const loginButton = document.querySelector('#loginButton');
+    loginButton.addEventListener('click', _ => {
+      if (loginButton.classList.contains('disabled-button'))
+        return;
+      loginButton.classList.add('disabled-button');
+      const loginDialog = document.querySelector('#login-dialog');
+      loginDialog.classList.add('dialog-opened');
+    });
+    
+    const showHide = document.querySelector('#show-hide-pass');
+    showHide.addEventListener('click', _ => {
+      const pass = document.querySelector('#password-input');
+      if (pass.type === 'password') {
+        pass.type = 'text';
+        showHide.textContent = 'Hide Password';
+      } else {
+        pass.type = 'password';
+        showHide.textContent = 'Show Password';
+      }
+    });
+    
+    const loginClose = document.querySelector('#login-close');
+    loginClose.addEventListener('click', _ => {
+      loginButton.classList.remove('disabled-button')
+      const loginDialog = document.querySelector('#login-dialog');
+      loginDialog.classList.remove('dialog-opened');
+    });
   };
 })();

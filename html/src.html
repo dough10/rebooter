@@ -29,6 +29,9 @@
             <h2>Rebooter.js Dashboard</h2>
           </div>
           <div class="flex flex-vertical-center">
+            <div id="loginButton" class="button">
+              login
+            </div>
             <div id="reboot" class="button">
               force reboot
             </div>
@@ -64,9 +67,30 @@
         <div></div>
         <div>
           <div id="reboot-dialog-close" class="button">cancel</div>
-          <div id="reboot-dialog-reboot" class="button">reboot</div>
+          <div id="reboot-dialog-reboot" class="button purple">reboot</div>
         </div>
       </div>
+    </div>
+
+    <div id="login-dialog" class="dialog">
+      <div class="flex space-between">
+        <h4>Login</h4>
+        <i id="login-close" class="material-icons red icon-button">close</i>
+      </div>
+      <div class="group">
+        <input type="test" required>
+        <span class="highlight"></span>
+        <span class="bar"></span>
+        <label>Username</label>
+      </div>
+      <div class="group">
+        <input id="password-input" type="password" required>
+        <span class="highlight"></span>
+        <span class="bar"></span>
+        <label>Password</label>
+      </div>
+      <div id="show-hide-pass" class="link">Show Password</div>
+      <div class="button purple">login</div>
     </div>
 
     <!-- build:js js/rebooter-client.min.js -->
