@@ -365,6 +365,7 @@ class Rebooter {
   }
 
 }
+
 const configFile = require(__dirname + '/config.json');
 const app = new Rebooter(configFile);
 app.start();

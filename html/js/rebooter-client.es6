@@ -679,10 +679,7 @@
       const newGraph =  new Graph(bigGraphHeight(), bigGraphWidth());
       graphDialog.appendChild(newGraph.canvas);
       const host = label.textContent;
-      newGraph.drawGraph(host, returnLabels(appData[host]), returnData(appData[host]), label.dataset, (_ => {
-        if (winWidth < 400) return false;
-        return true;
-      })());
+      newGraph.drawGraph(host, returnLabels(appData[host]), returnData(appData[host]), label.dataset, useTooltips());
       fadeIn(newGraph.canvas).then(_ => {
         const dialogTotalHeight = (graphDialog.offsetHeight + 48);
         const centerH = Math.floor((winHeight - 32) / 2);
@@ -737,7 +734,7 @@
   // redraw graphs on window reload
   let timer = 0;
   window.onresize = _ => {
-    getWindowSize()
+    getWindowSize();
     if (timer) {
       clearTimeout(timer);
       timer = 0;
@@ -864,11 +861,16 @@
      */
     socket.on('count', count => {
       const dialog = document.querySelector('#chartDialog');
+
       dataPoints = count.count;
       maxPage = count.count / appData[count.host].length;
       if (count.count <= appData[count.host].length)
         return;
       // previous button
+
+      let prevExist = dialog.querySelector('#previousButton');
+      if (prevExist)
+        return;
       const previous = new IconButton('arrow_back');
       previous.id = 'previousButton';
       previous.addEventListener('click', e => {
