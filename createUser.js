@@ -1,4 +1,4 @@
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const config = require(__dirname + '/config.json');
 const Datastore = require('nedb');
 const prompt = require('prompt');

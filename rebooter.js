@@ -14,7 +14,7 @@ class Rebooter {
     const _app = _express();
     const _compression = require('compression');
     const _server = _app.listen(config.port);
-    const bcrypt = require('bcryptjs');
+    const bcrypt = require('bcrypt');
     const tokenAuth = require('jsonwebtoken');
     const authenticator = require('authenticator');
     this._socket = require('socket.io')(_server);

@@ -10,7 +10,7 @@
   "license": "MIT",
   "dependencies": {
     "authenticator": "^1.1.2",
-    "bcryptjs": "^2.3.0",
+    "bcrypt": "^0.8.6",
     "compression": "^1.6.1",
     "express": "^4.13.4",
     "jsonwebtoken": "^6.2.0",
