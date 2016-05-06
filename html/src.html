@@ -73,10 +73,19 @@
     </div>
 
     <div id="login-dialog" class="dialog center-align">
+      <div class="loader" id="login-loading" style="opacity: 0; display: none;">
+        <div>
+          Loading...
+          <div class="bar-wrapper" style="width: 200px; display: block;">
+            <div class="load-bar"></div>
+          </div>
+        </div>
+      </div>
       <div class="flex space-between">
         <h4>Login</h4>
         <i id="login-close" class="material-icons red icon-button">close</i>
       </div>
+      <div id="login-output"></div>
       <div class="group">
         <input id="username-input" type="text" required>
         <span class="highlight"></span>

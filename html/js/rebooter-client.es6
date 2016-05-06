@@ -795,26 +795,36 @@
         reboot.style.display = 'flex';
         fadeIn(reboot);
       });
-    });
+    });;
   }
 
 
   function submitTwoFactor() {
     const username = document.querySelector('#username-input').value;
     const code = document.querySelector('#twoFactor-input').value;
-    socket.emit('twoFactor', {
+    const loginLoading = document.querySelector('#login-loading');
+    loginLoading.style.display = 'flex';
+    loginLoading.style.pointerEvents = 'auto';
+    fadeIn(loginLoading).then(_ => socket.emit('twoFactor', {
       username: username,
       code: code
-    });
+    }));
+    const loginOutput = document.querySelector('#login-output');
+    fadeOut(loginOutput);
   }
 
   function submitLogin() {
     const username = document.querySelector('#username-input').value;
     const password = document.querySelector('#password-input').value;
-    socket.emit('login', {
+    const loginLoading = document.querySelector('#login-loading');
+    loginLoading.style.display = 'flex';
+    loginLoading.style.pointerEvents = 'auto';
+    fadeIn(loginLoading).then(_ => socket.emit('login', {
       username: username,
       password: password
-    });
+    }));
+    const loginOutput = document.querySelector('#login-output');
+    fadeOut(loginOutput);
   }
 
   // redraw graphs on window reload
@@ -1048,6 +1058,24 @@
           startRebootAnimation();
         }
       }
+      if (message === 'login failed') {
+        const loginLoading = document.querySelector('#login-loading');
+        const loginOutput = document.querySelector('#login-output');
+        loginOutput.style.opacity = 0;
+        loginOutput.textContent = message;
+        fadeIn(loginOutput);
+        fadeOut(loginLoading).then(_ => {
+          loginLoading.style.pointerEvents = 'none';
+          loginLoading.style.display = 'none';
+        });
+      }
+      if (message === 'Successful Login') {
+        const loginOutput = document.querySelector('#login-output');
+        loginOutput.style.opacity = 0;
+        loginOutput.textContent = message;
+        loginOutput.style.color = 'green';
+        fadeIn(loginOutput);
+      }
       // enable button if router reboot has finished
       if (message === 'powering on router...')
         reboot.classList.remove('disabled-button');
@@ -1092,6 +1120,11 @@
       const sendButton = document.querySelector('#twoFactor-action');
       const twoFactorInput = document.querySelector('#twoFactor-input').parentNode;
       const showHide = document.querySelector('#show-hide-pass');
+      const loginLoading = document.querySelector('#login-loading');
+      fadeOut(loginLoading).then(_ => {
+        loginLoading.style.pointerEvents = 'none';
+        loginLoading.style.display = 'none';
+      });
       fadeOut(showHide).then(_ => {
         showHide.style.display = 'none';
       });

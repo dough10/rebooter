@@ -14,7 +14,7 @@ class Rebooter {
     const _app = _express();
     const _compression = require('compression');
     const _server = _app.listen(config.port);
-    const bcrypt = require('bcrypt');
+    const bcrypt = require('bcryptjs');
     const tokenAuth = require('jsonwebtoken');
     const authenticator = require('authenticator');
     this._socket = require('socket.io')(_server);
@@ -125,7 +125,7 @@ class Rebooter {
 
     this._network = require('network');
 
-    this.onoff = require('onoff').Gpio;
+    //this.onoff = require('onoff').Gpio;
 
     this._hasRebooted = false;
     this._failedRouterPings = 0;

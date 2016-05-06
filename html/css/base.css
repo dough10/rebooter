@@ -335,6 +335,7 @@ input {
 }
 input:focus {
   outline: none;
+  border-bottom: 1px solid #673AB7;
 }
 label {
   color: #999;
@@ -366,4 +367,7 @@ input:invalid {
 }
 .center-align {
   text-align: center;
+}
+#login-output {
+  color: red;
 }
