@@ -14,18 +14,69 @@ class Rebooter {
     const _app = _express();
     const _compression = require('compression');
     const _server = _app.listen(config.port);
+    const bcrypt = require('bcryptjs');
+    const tokenAuth = require('jsonwebtoken');
+    const authenticator = require('authenticator');
     this._socket = require('socket.io')(_server);
     this._socket.on('connection', _socket => {
-      _socket.on('force-reboot', _ => this._rebootRouter('manual'));
+      _socket.on('force-reboot', token => {
+        if (!token) return;
+        tokenAuth.verify(token, config.hashKey, (err, decoded) =>{
+          if (err) return;
+          if (!decoded) return;
+          this._rebootRouter('manual');
+        });
+      });
       _socket.on('count', host => this._count(host).then(count => this._emit('count', count)));
       _socket.on('log', obj => this._getLogs(obj.host, obj.skip, obj.limit).then(log => this._emit('log', log)));
+      _socket.on('login', login => {
+        this._users.findOne({
+          username: login.username
+        }, (err, user) => {
+          if (!user) {
+            this._emit('toast', 'login failed');
+            return;
+          }
+          if (!bcrypt.compareSync(login.password, user.password)) {
+            this._emit('toast', 'login failed');
+            return;
+          }
+          if (user.twoFactor) {
+            _socket.emit('twoFactor');
+            return;
+          }
+          const token = tokenAuth.sign(user, this.config.haskKey, {
+            expiresIn: '24h'
+          });
+          _socket.emit('login', token);
+          _socket.emit('toast', 'Successful Login');
+        });
+      });
+      _socket.on('twoFactor', twoFactor => {
+        this._users.findOne({
+          username: twoFactor.username
+        }, (err, user) => {
+          if (!user) {
+            this._emit('toast', 'login failed');
+            return;
+          }
+          if (!authenticator.verifyToken(user.authKey, twoFactor.code)) {
+            this._emit('toast', 'login failed');
+            return;
+          }
+          const token = tokenAuth.sign(user, this.config.hashKey, {
+            expiresIn: '24h'
+          });
+          _socket.emit('login', token);
+          _socket.emit('toast', 'Successful Login');
+        });
+      });
       this._pushRestarts();
       this._pushHistory();
       // one off ping to lessen the delay for router status
       // without could take +30 seconds to get status
       this._network.get_gateway_ip((err, ip) => this._ping(ip).then(res => this._emit('router-status', res)));
     });
-
 
     this.PingWrapper = require ("ping-wrapper");
     this.PingWrapper.configure();
@@ -37,6 +88,10 @@ class Rebooter {
     });
     this._restarts = new Data({
       filename: __dirname + '/data/restarts.db',
+      autoload: true
+    });
+    this._users = new Data({
+      filename: __dirname + '/data/users.db',
       autoload: true
     });
 
@@ -70,7 +125,7 @@ class Rebooter {
 
     this._network = require('network');
 
-    //this.onoff = require('onoff').Gpio;
+    this.onoff = require('onoff').Gpio;
 
     this._hasRebooted = false;
     this._failedRouterPings = 0;

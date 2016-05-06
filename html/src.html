@@ -72,13 +72,13 @@
       </div>
     </div>
 
-    <div id="login-dialog" class="dialog">
+    <div id="login-dialog" class="dialog center-align">
       <div class="flex space-between">
         <h4>Login</h4>
         <i id="login-close" class="material-icons red icon-button">close</i>
       </div>
       <div class="group">
-        <input type="test" required>
+        <input id="username-input" type="text" required>
         <span class="highlight"></span>
         <span class="bar"></span>
         <label>Username</label>
@@ -89,8 +89,15 @@
         <span class="bar"></span>
         <label>Password</label>
       </div>
+      <div class="group" style="display: none; opacity: 0;">
+        <input id="twoFactor-input" type="number" required>
+        <span class="highlight"></span>
+        <span class="bar"></span>
+        <label>Two Factor</label>
+      </div>
       <div id="show-hide-pass" class="link">Show Password</div>
-      <div class="button purple">login</div>
+      <div class="button purple" id="login-action">login</div>
+      <div class="button purple" id="twoFactor-action" style="display: none; opacity: 0;">send</div>
     </div>
 
     <!-- build:js js/rebooter-client.min.js -->

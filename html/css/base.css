@@ -364,3 +364,6 @@ input:invalid {
 .red {
   color: red;
 }
+.center-align {
+  text-align: center;
+}

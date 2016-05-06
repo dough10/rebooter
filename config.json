@@ -4,6 +4,8 @@
   "repeat": 0.25,
   "relayPin": 4,
   "graphLength": 20,
+  "encryptionIterations": 10,
+  "hashKey": "6467770c202c3bed12a3ed55847fd600",
   "addresses": [
     "8.8.8.8",
     "8.8.4.4",

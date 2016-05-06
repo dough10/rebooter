@@ -233,6 +233,8 @@
   let page = 1;
   let maxPage;
 
+  let loginToken;
+
   // size of the window of things in the window
   let scrollWidth;
   let winWidth;
@@ -711,12 +713,12 @@
     const rebootPos = findDialogPos(rDialog);
     rDialog.style.top = rebootPos.top;
     rDialog.style.left = rebootPos.left;
-    
+
     const loginDialog = document.querySelector('#login-dialog');
     const loginPos = findDialogPos(loginDialog);
     loginDialog.style.top = loginPos.top;
     loginDialog.style.left = loginPos.left;
-    
+
 
     // fab
     let fab = document.querySelector('#fab');
@@ -791,13 +793,29 @@
       requestAnimationFrame(_ => {
         loginButton.style.display = 'none';
         reboot.style.display = 'flex';
-        fadeIn(reboot).then(_ => {
-          console.log('fuck yeah')
-        });
+        fadeIn(reboot);
       });
     });
   }
 
+
+  function submitTwoFactor() {
+    const username = document.querySelector('#username-input').value;
+    const code = document.querySelector('#twoFactor-input').value;
+    socket.emit('twoFactor', {
+      username: username,
+      code: code
+    });
+  }
+
+  function submitLogin() {
+    const username = document.querySelector('#username-input').value;
+    const password = document.querySelector('#password-input').value;
+    socket.emit('login', {
+      username: username,
+      password: password
+    });
+  }
 
   // redraw graphs on window reload
   let timer = 0;
@@ -839,7 +857,7 @@
         button.addEventListener('mousedown', ev => button.PaperRipple.downAction(ev));
         button.addEventListener('mouseup', e => button.PaperRipple.upAction());
       });
-      
+
       const iconButtons = document.querySelectorAll('.icon-button');
       [].slice.call(iconButtons).forEach(button => {
         button.PaperRipple = new PaperRipple();
@@ -966,8 +984,8 @@
       fadeOut(oldCanvas).then(_ => {
         dialog.removeChild(oldCanvas);
         oldCanvas = null;
-        
-        
+
+
         const graphData = returnData(log.history);
         // output pings
         const texts = dialog.querySelectorAll('.high-low-text');
@@ -997,7 +1015,7 @@
           forward.style.display = 'flex';
           fadeIn(forward);
         }
-        
+
         const newCanvas = new Graph(bigGraphHeight(), bigGraphWidth());
         dialog.appendChild(newCanvas.canvas);
         // stamp data to the new canvas
@@ -1056,6 +1074,42 @@
       }
     });
 
+
+    socket.on('login', token => {
+      loginToken = token;
+      document.querySelector('#username-input').value = '';
+      document.querySelector('#password-input').value = '';
+      document.querySelector('#twoFactor-input').value = '';
+      const loginDialog = document.querySelector('#login-dialog');
+      loginDialog.classList.remove('dialog-opened');
+      switchButtons();
+    });
+
+    socket.on('twoFactor', _ => {
+      const usernameInput = document.querySelector('#username-input').parentNode;
+      const passwordInput = document.querySelector('#password-input').parentNode;
+      const loginButton = document.querySelector('#login-action');
+      const sendButton = document.querySelector('#twoFactor-action');
+      const twoFactorInput = document.querySelector('#twoFactor-input').parentNode;
+      const showHide = document.querySelector('#show-hide-pass');
+      fadeOut(showHide).then(_ => {
+        showHide.style.display = 'none';
+      });
+      fadeOut(usernameInput).then(_ => {
+        usernameInput.style.display = 'none';
+      });
+      fadeOut(passwordInput).then(_ => {
+        passwordInput.style.display = 'none';
+      });
+      fadeOut(loginButton).then(_ => {
+        loginButton.style.display = 'none';
+        twoFactorInput.style.display = 'block';
+        sendButton.style.display = 'inline-block';
+        fadeIn(sendButton);
+        fadeIn(twoFactorInput);
+      });
+    });
+
     /**
      * open reboot dialog
      */
@@ -1078,9 +1132,9 @@
      */
     rebootButton.addEventListener('click', _ => closeRebootDialog().then(_ => {
       startRebootTimer();
-      socket.emit('force-reboot');
+      socket.emit('force-reboot', loginToken);
     }));
-    
+
     const loginButton = document.querySelector('#loginButton');
     loginButton.addEventListener('click', _ => {
       if (loginButton.classList.contains('disabled-button'))
@@ -1089,7 +1143,7 @@
       const loginDialog = document.querySelector('#login-dialog');
       loginDialog.classList.add('dialog-opened');
     });
-    
+
     const showHide = document.querySelector('#show-hide-pass');
     showHide.addEventListener('click', _ => {
       const pass = document.querySelector('#password-input');
@@ -1101,12 +1155,32 @@
         showHide.textContent = 'Show Password';
       }
     });
-    
+
     const loginClose = document.querySelector('#login-close');
     loginClose.addEventListener('click', _ => {
       loginButton.classList.remove('disabled-button')
       const loginDialog = document.querySelector('#login-dialog');
       loginDialog.classList.remove('dialog-opened');
+    });
+
+    const loginAction = document.querySelector('#login-action');
+    loginAction.addEventListener('click', submitLogin);
+
+    const twoFactorAction = document.querySelector('#twoFactor-action');
+    twoFactorAction.addEventListener('click', submitTwoFactor);
+
+    const passwordInput = document.querySelector('#password-input');
+    passwordInput.addEventListener('keyup', e => {
+      if (e.keyCode === 13) {
+        submitLogin();
+      }
+    });
+
+    const twoFactorinput = document.querySelector('#twoFactor-input');
+    twoFactorinput.addEventListener('keyup', e => {
+      if (e.keyCode === 13) {
+        submitTwoFactor();
+      }
     });
   };
 })();
