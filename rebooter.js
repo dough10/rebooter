@@ -189,11 +189,13 @@ class Rebooter {
       });
       setTimeout(() => {
         _ping.stop();
-      }, 60000);
+      }, 15000);
     });
   }
 
-  
+  /**
+   * will kill power to the router by triggering a relay
+   */
   relayReboot() {
     return new Promise(resolve => {
       const _gpio = this.onoff(this.config.relayPin, 'out');
@@ -209,14 +211,18 @@ class Rebooter {
     });
   }
 
-
+  /**
+   * log time and type of reboot
+   *
+   * @param {String} type - manual or automated
+   */
   enterRestartToDB(type) {
     this._restarts.insert({
       time: new Date().getTime(),
       type: type
     }, err => this._pushRestarts(err));
   }
-  
+
 
   /**
    * reboot the router
