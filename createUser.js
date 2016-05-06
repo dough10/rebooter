@@ -3,8 +3,6 @@ const config = require(__dirname + '/config.json');
 const Datastore = require('nedb');
 const prompt = require('prompt');
 const authenticator = require('authenticator');
-const _express = require('express');
-const _app = _express();
 const qr = require('qr-image');
 const fs = require('fs');
 
