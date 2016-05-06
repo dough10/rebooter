@@ -10,6 +10,7 @@ class Rebooter {
       return;
     }
     this.config = config;
+    this.fs = require('fs');
     const _express = require('express');
     const _app = _express();
     const _compression = require('compression');
@@ -17,6 +18,9 @@ class Rebooter {
     const bcrypt = require('bcryptjs');
     const tokenAuth = require('jsonwebtoken');
     const authenticator = require('authenticator');
+    this.SSH = require('simple-ssh');
+    this._routerIP = '';
+    this._lastRouterPing = {};
     this._socket = require('socket.io')(_server);
     this._socket.on('connection', _socket => {
       _socket.on('force-reboot', token => {
@@ -192,6 +196,37 @@ class Rebooter {
       }, 60000);
     });
   }
+  
+  /**
+   * will kill power to the router by triggering a relay
+   */
+  relayReboot() {
+    return new Promise(resolve => {
+      const _gpio = this.onoff(this.config.relayPin, 'out');
+      _gpio.write(1, _ => {
+        setTimeout(_ => {
+          this._emit('toast', 'powering on router...');
+          _gpio.write(0, _ => {
+            this._print('router rebooted');
+            resolve();
+          });
+        }, 35000);
+      });
+    });
+  }
+
+  /**
+   * log time and type of reboot
+   *
+   * @param {String} type - manual or automated
+   */
+  enterRestartToDB(type) {
+    this._restarts.insert({
+      time: new Date().getTime(),
+      type: type
+    }, err => this._pushRestarts(err));
+  }
+  
 
   /**
    * reboot the router
@@ -201,21 +236,39 @@ class Rebooter {
   _rebootRouter(type) {
     this._hasRebooted = true;
     this._emit('toast', 'rebooting router...');
-    // set up gpio
-    const _gpio = this.onoff(this.config.relayPin, 'out');
-    _gpio.write(1, _ => {
-      setTimeout(_ => {
-        this._restarts.insert({
-          time: new Date().getTime(),
-          type: type
-        }, err => this._pushRestarts(err));
-        this._emit('toast', 'powering on router...');
-        _gpio.write(0, _ => {
-          this._print('router rebooted');
+    if (this.fs.existsSync(__dirname + '/ssh.json') && this._lastRouterPing.data.hasOwnProperty('time')) {
+      // ssh file exist and last router ping was successful
+      // will attempt to reboot with ssh
+      const routerLogin = require(__dirname + '/ssh.json');
+      routerLogin.host = this._routerIP;
+      console.log(routerLogin);
+      try {
+        const ssh = new this.SSH(routerLogin);
+        ssh.on('error', err => {
+          console.log('ssh error', err);
+          this.relayReboot().then(_ => this.enterRestartToDB(type));
+          ssh.end();
         });
-      }, 35000);
-    });
+        ssh.exec(this.config.routerRebootCommand, {
+          out: stdout => {
+            enterRestartToDB(type);
+            this._print('router rebooted');
+            this.enterRestartToDB(type);
+            this._emit('toast', 'powering on router...');
+            console.log(stdout);
+          }
+        }).start();
+      } catch (e) {
+        console.log('catch', e);
+        this.relayReboot().then(_ => this.enterRestartToDB(type));
+      }
+    }
+    if (!this._lastRouterPing.data.hasOwnProperty('time')) {
+      // must be researt with relay
+      this.relayReboot().then(_ => this.enterRestartToDB(type));
+    }
   }
+
 
   /**
    * count failed pings
@@ -379,6 +432,7 @@ class Rebooter {
       this._pingRouter(ip);
     }, 30000);
     this._ping(ip).then(res => {
+      this._lastRouterPing = res;
       if (!res.data.hasOwnProperty('time')) {
         this._failedRouterPings++;
         if (this._failedRouterPings > 2)
@@ -416,7 +470,10 @@ class Rebooter {
     console.time('all pings responded in');
     // run ping on each address in the list
     this._addresses.forEach(address => this._ping(address).then(this._response.bind(this)));
-    this._network.get_gateway_ip((err, ip) => this._pingRouter(ip));
+    this._network.get_gateway_ip((err, ip) => {
+      this._routerIP = ip;
+      this._pingRouter(ip);
+    });
   }
 
 }

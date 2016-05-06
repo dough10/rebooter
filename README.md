@@ -2,7 +2,7 @@
 
 Reboot a router if internet is down with Raspberry Pi, a relay and Node.JS.
 
-This app pings internet URL's and IP addresses. When all pings fail it will trip a relay for 35 seconds allowing a router to be restarted.
+This app pings internet URL's and IP addresses. When all pings fail it will if configured attempt to reboot the router by ssh connection and fallback to tripping a relay for 35 seconds interupting power to the router.
 
 Manual reboot from web frontend requires login. The app is also configured to allow for two factor authentication so if you do decide to expose it to the internet you can feel a little safer knowing any random person that finds the frontend can NOT reboot your router.
 
@@ -19,6 +19,7 @@ This app requires sudo permission in order to have access to Raspberry Pi's GPIO
     "ping-wrapper": "0.0.3",
     "prompt": "^1.0.0",
     "qr-image": "^3.1.0",
+    "simple-ssh": "^0.9.0",
     "socket.io": "^1.4.5"
     
 ## dev dependencies
@@ -88,6 +89,19 @@ If you select 'true' to use two factor authentication you will need one of the a
 * GAuth [FxOS](https://marketplace.firefox.com/app/gauth/)
 
 
+If your router supports it and an you have ssh.json file configured you can attempt to reboot with ssh before triggering the relay
+```shell
+nano ssh.json
+```
+
+ssh.json example
+```json
+{
+  "user":"admin",
+  "pass":"password"
+}
+```
+
 run the app
 ```shell
 sudo node rebooter
@@ -114,5 +128,21 @@ edit the following command to match your folder structure and paste at the botto
 ```shell
 @reboot /usr/bin/sudo -u root -H /usr/local/bin/forever start /home/pi/rebooter/rebooter.js
 ```
+
+
+## dev flow
+
+Grunt required for build process
+```shell
+sudo npm install -g grunt
+```
+
+html sourve file = /html/src.html
+
+css source  = /html/css/bace.css
+
+js source = /html/js/rebooter-client.es6
+
+if any changes are made toe those files you must run "grunt" from project root
 
 

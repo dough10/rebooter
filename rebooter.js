@@ -193,6 +193,31 @@ class Rebooter {
     });
   }
 
+  
+  relayReboot() {
+    return new Promise(resolve => {
+      const _gpio = this.onoff(this.config.relayPin, 'out');
+      _gpio.write(1, _ => {
+        setTimeout(_ => {
+          this._emit('toast', 'powering on router...');
+          _gpio.write(0, _ => {
+            this._print('router rebooted');
+            resolve();
+          });
+        }, 35000);
+      });
+    });
+  }
+
+
+  enterRestartToDB(type) {
+    this._restarts.insert({
+      time: new Date().getTime(),
+      type: type
+    }, err => this._pushRestarts(err));
+  }
+  
+
   /**
    * reboot the router
    *
@@ -201,20 +226,34 @@ class Rebooter {
   _rebootRouter(type) {
     this._hasRebooted = true;
     this._emit('toast', 'rebooting router...');
-    // set up gpio
-    const _gpio = this.onoff(this.config.relayPin, 'out');
-    _gpio.write(1, _ => {
-      setTimeout(_ => {
-        this._restarts.insert({
-          time: new Date().getTime(),
-          type: type
-        }, err => this._pushRestarts(err));
-        this._emit('toast', 'powering on router...');
-        _gpio.write(0, _ => {
-          this._print('router rebooted');
+    if (this.fs.existsSync(__dirname + '/ssh.json') && this._lastRouterPing.data.hasOwnProperty('time')) {
+      // ssh file exist and last router ping was successful
+      // will attempt to reboot with ssh
+      const routerLogin = require(__dirname + '/ssh.json');
+      routerLogin.host = this._routerIP;
+      try {
+        const ssh = new this.SSH(routerLogin);
+        ssh.on('error', err => {
+          this.relayReboot().then(_ => this.enterRestartToDB(type));
+          ssh.end();
         });
-      }, 35000);
-    });
+        ssh.exec(this.config.routerRebootCommand, {
+          out: stdout => {
+            enterRestartToDB(type);
+            this._print('router rebooted');
+            this.enterRestartToDB(type);
+            ssh.end();
+            //console.log(stdout);
+          }
+        }).start();
+      } catch (e) {
+        this.relayReboot().then(_ => this.enterRestartToDB(type));
+      }
+    }
+    if (!this._lastRouterPing.data.hasOwnProperty('time')) {
+      // must be researt with relay
+      this.relayReboot().then(_ => this.enterRestartToDB(type));
+    }
   }
 
   /**
