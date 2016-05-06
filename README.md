@@ -66,7 +66,7 @@ The "maxping" property is the high ping threshold. If more then half of the addr
 
 The "repeat" property is how long between pings in hours. Default is 15 min or 0.25 hours
 
-The "relayPin" property is the Number of the GPIO pin you have connected to your relay.  **GPIO number not ping number**
+The "relayPin" property is the Number of the GPIO pin you have connected to your relay.  **GPIO number not pin number**
 
 The 'graphLength' property is how many data points will be displayed on graphs
 
