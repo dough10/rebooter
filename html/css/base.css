@@ -130,6 +130,7 @@ header {
     transform: translateX(-100%)
   }
 }
+/*
 @keyframes spin {
   0% {
     transform: rotate(0deg)
@@ -164,6 +165,7 @@ header {
     transform: rotate(0deg)
   }
 }
+*/
 .toast {
   background: #323232;
   padding: 16px;
@@ -367,6 +369,9 @@ input:invalid {
 }
 .center-align {
   text-align: center;
+}
+.left-align {
+  text-align: left;
 }
 #login-output {
   color: red;

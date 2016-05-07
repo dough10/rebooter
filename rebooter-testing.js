@@ -11,6 +11,8 @@ class Rebooter {
     }
     this.config = config;
     this.fs = require('fs');
+    this._network = require('network');
+    //this.onoff = require('onoff').Gpio;
     const _express = require('express');
     const _app = _express();
     const _compression = require('compression');
@@ -18,17 +20,23 @@ class Rebooter {
     const bcrypt = require('bcryptjs');
     const tokenAuth = require('jsonwebtoken');
     const authenticator = require('authenticator');
-    this.SSH = require('simple-ssh');
-    this._routerIP = '';
-    this._lastRouterPing = {};
     this._socket = require('socket.io')(_server);
     this._socket.on('connection', _socket => {
       _socket.on('force-reboot', token => {
-        if (!token) return;
+        if (!token) {
+          this._emit('toast', 'login required');
+          return;
+        }
         tokenAuth.verify(token, config.hashKey, (err, decoded) =>{
-          if (err) return;
-          if (!decoded) return;
-          this._rebootRouter('manual');
+          if (err) {
+            this._emit('toast', 'invalid token');
+            return;
+          }
+          if (!decoded) {
+            this._emit('toast', 'invalid token');
+            return;
+          }
+          this._rebootRouter('manual', user.username);
         });
       });
       _socket.on('count', host => this._count(host).then(count => this._emit('count', count)));
@@ -77,7 +85,7 @@ class Rebooter {
       });
       this._pushRestarts();
       this._pushHistory();
-      // one off ping to lessen the delay for router status
+      // one off ping to shorten the delay for router status
       // without could take +30 seconds to get status
       this._network.get_gateway_ip((err, ip) => this._ping(ip).then(res => this._emit('router-status', res)));
     });
@@ -127,9 +135,7 @@ class Rebooter {
       this._getLogs(host, skip, limit).then(logs => res.status(logs.status).send(logs));
     });
 
-    this._network = require('network');
 
-    //this.onoff = require('onoff').Gpio;
 
     this._hasRebooted = false;
     this._failedRouterPings = 0;
@@ -179,35 +185,29 @@ class Rebooter {
   _ping(url) {
     return new Promise(resolve => {
       let _ping = new this.PingWrapper(url);
-      _ping.on('ping', data => {
-        resolve({
-          address: url,
-          data: data
-        });
-      });
-      _ping.on('fail', data => {
-        resolve({
-          address: url,
-          data: false
-        });
-      });
-      setTimeout(() => {
-        _ping.stop();
-      }, 60000);
+      _ping.on('ping', data => resolve({
+        address: url,
+        data: data
+      }));
+      _ping.on('fail', data => resolve({
+        address: url,
+        data: false
+      }));
+      setTimeout(_ => _ping.stop(), 15000);
     });
   }
-  
+
   /**
    * will kill power to the router by triggering a relay
    */
-  relayReboot() {
+  _relayReboot() {
     return new Promise(resolve => {
       const _gpio = this.onoff(this.config.relayPin, 'out');
       _gpio.write(1, _ => {
         setTimeout(_ => {
           this._emit('toast', 'powering on router...');
           _gpio.write(0, _ => {
-            this._print('router rebooted');
+            this._print('router rebooted with relay');
             resolve();
           });
         }, 35000);
@@ -219,56 +219,56 @@ class Rebooter {
    * log time and type of reboot
    *
    * @param {String} type - manual or automated
+   * @param {String} user - username of the user the initated the reboot
    */
-  enterRestartToDB(type) {
-    this._restarts.insert({
+  _enterRestartToDB(type, user) {
+    let obj = {
       time: new Date().getTime(),
       type: type
-    }, err => this._pushRestarts(err));
+    };
+    if (user) obj.user = user;
+    this._restarts.insert(obj, err => this._pushRestarts(err));
   }
-  
+
 
   /**
    * reboot the router
    *
    * @param {String} type - manual or automated
+   * @param {String} user - username of the user the initated the reboot
    */
-  _rebootRouter(type) {
+  _rebootRouter(type, user) {
     this._hasRebooted = true;
     this._emit('toast', 'rebooting router...');
     if (this.fs.existsSync(__dirname + '/ssh.json') && this._lastRouterPing.data.hasOwnProperty('time')) {
       // ssh file exist and last router ping was successful
       // will attempt to reboot with ssh
       const routerLogin = require(__dirname + '/ssh.json');
-      routerLogin.host = this._routerIP;
-      console.log(routerLogin);
+      if (!routerLogin.hasOwnProperty('host')) 
+        routerLogin.host = this._routerIP;
       try {
         const ssh = new this.SSH(routerLogin);
         ssh.on('error', err => {
-          console.log('ssh error', err);
-          this.relayReboot().then(_ => this.enterRestartToDB(type));
+          this._relayReboot().then(_ => this._enterRestartToDB(type, user));
           ssh.end();
         });
         ssh.exec(this.config.routerRebootCommand, {
           out: stdout => {
-            enterRestartToDB(type);
-            this._print('router rebooted');
-            this.enterRestartToDB(type);
-            this._emit('toast', 'powering on router...');
-            console.log(stdout);
+            this._print('router rebooted with ssh connection');
+            this._enterRestartToDB(type, user);
+            ssh.end();
+            //console.log(stdout);
           }
         }).start();
       } catch (e) {
-        console.log('catch', e);
-        this.relayReboot().then(_ => this.enterRestartToDB(type));
+        this._relayReboot().then(_ => this._enterRestartToDB(type, user));
       }
     }
     if (!this._lastRouterPing.data.hasOwnProperty('time')) {
       // must be researt with relay
-      this.relayReboot().then(_ => this.enterRestartToDB(type));
+      this._relayReboot().then(_ => this._enterRestartToDB(type, user));
     }
   }
-
 
   /**
    * count failed pings
@@ -292,8 +292,10 @@ class Rebooter {
     // all pings returned with good time
     if (!count && !highPings)
       this._print('all pings successful');
+    // as long as even one ping is goood 
     if (count > 1)
       this._hasRebooted = false;
+    // notify front end of failed pings
     if (count)
       this._emit('toast', count + ' of ' + this._addresses.length + ' pings failed with ' + highPings + ' high pings');
     // all pings failed
@@ -302,7 +304,9 @@ class Rebooter {
     // half or more of the pings had high ping time
     if (highPings >= Math.floor(this._addresses.length / 2) && !this._hasRebooted)
       this._rebootRouter('automated');
+    // output total time taken for pings to run to console
     console.timeEnd('all pings responded in');
+    // update data on frontend
     this._pushHistory();
   }
 
@@ -314,7 +318,7 @@ class Rebooter {
   _pushRestarts(err) {
     if (err) this._print(err);
     this._restarts.count({}, (err, count) => {
-      this._restarts.find().sort({time: 1}).skip((() => {
+      this._restarts.find().sort({time: 1}).skip((_ => {
         if (count > 10) {
           return count - 10;
         } else {
@@ -432,13 +436,13 @@ class Rebooter {
       this._pingRouter(ip);
     }, 30000);
     this._ping(ip).then(res => {
-      this._lastRouterPing = res;
       if (!res.data.hasOwnProperty('time')) {
         this._failedRouterPings++;
         if (this._failedRouterPings > 2)
           this._rebootRouter('automated');
         return;
       }
+      this._lastRouterPing = res;
       this._failedRouterPings = 0;
       this._emit('router-status', res);
     });
@@ -470,10 +474,7 @@ class Rebooter {
     console.time('all pings responded in');
     // run ping on each address in the list
     this._addresses.forEach(address => this._ping(address).then(this._response.bind(this)));
-    this._network.get_gateway_ip((err, ip) => {
-      this._routerIP = ip;
-      this._pingRouter(ip);
-    });
+    this._network.get_gateway_ip((err, ip) => this._pingRouter(ip));
   }
 
 }

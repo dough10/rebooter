@@ -1,6 +1,6 @@
 # Rebooter.js
 
-Reboot a router if internet is down with Raspberry Pi, a relay and Node.JS.
+Reboot a router if internet is down with Raspberry Pi, Node.JS and a relay.
 
 This app pings internet URL's and IP addresses. When all pings fail it will if configured attempt to reboot the router by ssh connection and fallback to tripping a relay for 35 seconds interupting power to the router.
 
@@ -101,6 +101,8 @@ ssh.json example
   "pass":"password"
 }
 ```
+If you need to force Rebooter to ssh a IP differant then the detected address you can had a "host" property with that IP to the ssh.json object
+
 
 run the app
 ```shell
@@ -130,7 +132,7 @@ edit the following command to match your folder structure and paste at the botto
 ```
 
 
-## dev flow
+## dev
 
 Grunt required for build process
 ```shell
@@ -143,6 +145,6 @@ css source  = /html/css/bace.css
 
 js source = /html/js/rebooter-client.es6
 
-if any changes are made toe those files you must run "grunt" from project root
+if any changes are made to those files you must run "grunt" from project root
 
 
