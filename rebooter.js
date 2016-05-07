@@ -10,6 +10,7 @@ class Rebooter {
       return;
     }
     this.config = config;
+    this.fs = require('fs');
     const _express = require('express');
     const _app = _express();
     const _compression = require('compression');
