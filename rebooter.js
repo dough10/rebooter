@@ -37,7 +37,7 @@ class Rebooter {
             this._emit('toast', 'invalid token');
             return;
           }
-          this._rebootRouter('manual', user.username);
+          this._rebootRouter('manual', decoded.username);
         });
       });
       _socket.on('count', host => this._count(host).then(count => this._emit('count', count)));

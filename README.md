@@ -2,11 +2,11 @@
 
 Reboot a router if internet is down with Raspberry Pi, Node.JS and a relay.
 
-This app pings internet URL's and IP addresses. When all pings fail it will if configured attempt to reboot the router by ssh connection and fallback to tripping a relay for 35 seconds interupting power to the router.
+Rebooter pings internet URL's and IP addresses. When all pings fail it will if configured attempt to reboot the router by ssh connection and fallback to tripping a relay for 35 seconds interupting power to the router.
 
 Manual reboot from web frontend requires login. The app is also configured to allow for two factor authentication so if you do decide to expose it to the internet you can feel a little safer knowing any random person that finds the frontend can NOT reboot your router.
 
-This app requires sudo permission in order to have access to Raspberry Pi's GPIOs. With that being said I do not recommend exposing this app to the internet and should only be used for internal use.
+Rebooter requires sudo permission in order to have access to Raspberry Pi's GPIOs. With that being said I do not recommend exposing Rebooter to the internet and should only be used for internal use.
 
 ## dependencies
     "authenticator": "^1.1.2",
@@ -21,7 +21,7 @@ This app requires sudo permission in order to have access to Raspberry Pi's GPIO
     "qr-image": "^3.1.0",
     "simple-ssh": "^0.9.0",
     "socket.io": "^1.4.5"
-    
+
 ## dev dependencies
     "babel-plugin-transform-es2015-arrow-functions": "^6.5.2",
     "babel-plugin-transform-es2015-block-scoping": "^6.7.1",
@@ -101,7 +101,7 @@ ssh.json example
   "pass":"password"
 }
 ```
-If you need to force Rebooter to ssh a IP differant then the detected address you can had a "host" property with that IP to the ssh.json object
+If you need to force Rebooter to ssh a IP differant then the detected address you can add a "host" property with that IP to the ssh.json object
 
 
 run the app
@@ -146,5 +146,3 @@ css source  = /html/css/bace.css
 js source = /html/js/rebooter-client.es6
 
 if any changes are made to those files you must run "grunt" from project root
-
-

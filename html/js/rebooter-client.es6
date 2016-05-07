@@ -1053,10 +1053,10 @@
     socket.on('toast', message => {
       if (message === 'rebooting router...') {
         // ensure button is disabled
-        if (!reboot.classList.contains('disabled-button')) {
+
+        if (!reboot.classList.contains('disabled-button'))
           reboot.classList.add('disabled-button');
-          startRebootAnimation();
-        }
+        startRebootTimer();
       }
       if (message === 'login failed') {
         const loginLoading = document.querySelector('#login-loading');
@@ -1164,7 +1164,6 @@
      * close reboot dialog and reboot
      */
     rebootButton.addEventListener('click', _ => closeRebootDialog().then(_ => {
-      startRebootTimer();
       socket.emit('force-reboot', loginToken);
     }));
 
