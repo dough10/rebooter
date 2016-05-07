@@ -61,7 +61,7 @@ configure the JSON file to your liking
 nano config.json
 ```
 
-I recommend at least changing the "haskKey" property if you change nothing else
+I recommend at least changing the "hashKey" property if you change nothing else
 
 The "maxping" property is the high ping threshold. If more then half of the addresses return high ping app will call for a router reboot.
 

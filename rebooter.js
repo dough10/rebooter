@@ -10,6 +10,7 @@ class Rebooter {
       return;
     }
     this.config = config;
+    this._routerIP = false;
     this.fs = require('fs');
     this._network = require('network');
     this.onoff = require('onoff').Gpio;
@@ -432,6 +433,8 @@ class Rebooter {
    * @param {String} - ip
    */
   _pingRouter(ip) {
+    if (!this._routerIP)
+      this._routerIP = ip;
     setTimeout(_ => {
       this._pingRouter(ip);
     }, 30000);
