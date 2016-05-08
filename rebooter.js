@@ -14,6 +14,7 @@ class Rebooter {
     this.fs = require('fs');
     this._network = require('network');
     this.onoff = require('onoff').Gpio;
+    this.SSH = require('simple-ssh');
     const _express = require('express');
     const _app = _express();
     const _compression = require('compression');
@@ -244,29 +245,42 @@ class Rebooter {
     if (this.fs.existsSync(__dirname + '/ssh.json') && this._lastRouterPing.data.hasOwnProperty('time')) {
       // ssh file exist and last router ping was successful
       // will attempt to reboot with ssh
+
       const routerLogin = require(__dirname + '/ssh.json');
       if (!routerLogin.hasOwnProperty('host'))
         routerLogin.host = this._routerIP;
       try {
+        console.log(routerLogin)
         const ssh = new this.SSH(routerLogin);
         ssh.on('error', err => {
+          console.log(err)
           this._relayReboot().then(_ => this._enterRestartToDB(type, user));
           ssh.end();
         });
         ssh.exec(this.config.routerRebootCommand, {
-          out: stdout => {
+          err: function (err) {
+            console.log(err)
+            this._relayReboot().then(_ => this._enterRestartToDB(type, user));
+            ssh.end();
+          },
+          out: function (stdout)  {
             this._print('router rebooted with ssh connection');
             this._enterRestartToDB(type, user);
             ssh.end();
-            //console.log(stdout);
+            console.log(stdout);
+          },
+          exit: function (code) {
+            console.log(code);
           }
         }).start();
       } catch (e) {
+        console.log(e)
         this._relayReboot().then(_ => this._enterRestartToDB(type, user));
       }
-    }
-    if (!this._lastRouterPing.data.hasOwnProperty('time')) {
+    } else if (!this._lastRouterPing.data.hasOwnProperty('time')) {
       // must be researt with relay
+      this._relayReboot().then(_ => this._enterRestartToDB(type, user));
+    } else {
       this._relayReboot().then(_ => this._enterRestartToDB(type, user));
     }
   }
