@@ -32,9 +32,11 @@ module.exports = function(grunt) {
         ]
       },
       build: {
-        files: {
+        files: [{
           "html/js/rebooter-client.js": "html/js/rebooter-client.es6"
-        }
+        },{
+          "rebooter.js": "rebooter.es6"
+        }]
       }
     },
     cssmin: {
