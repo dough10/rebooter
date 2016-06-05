@@ -5,7 +5,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var Rebooter = function () {
-  function Rebooter(config) {
+  function Rebooter(config, mongooseConfig) {
     var _this = this;
 
     _classCallCheck(this, Rebooter);
@@ -16,153 +16,181 @@ var Rebooter = function () {
       return;
     }
     this.config = config;
-    this._routerIP = false;
-    this.fs = require('fs');
-    this._network = require('network');
-    this.onoff = require('onoff').Gpio;
-    this.SSH = require('simple-ssh');
-    var _express = require('express');
-    var _app = _express();
-    var _compression = require('compression');
-    var _server = _app.listen(config.port);
-    var bcrypt = require('bcrypt');
-    var tokenAuth = require('jsonwebtoken');
-    var authenticator = require('authenticator');
-    this._socket = require('socket.io')(_server);
-    this._socket.on('connection', function (_socket) {
-      _socket.on('force-reboot', function (token) {
-        if (!token) {
-          _this._emit('toast', 'login required');
+    this._mongoose = require('mongoose');
+    this._mongodb = this._mongoose.connection;
+    this._mongodb.on('error', console.error);
+    this._mongodb.once('open', function (_) {
+      _this._print('Mongoose Connection Open');
+      _this._routerIP = false;
+      _this.fs = require('fs');
+      _this._network = require('network');
+      //this.onoff = require('onoff').Gpio;
+      _this.SSH = require('simple-ssh');
+      var _express = require('express');
+      var _app = _express();
+      var _compression = require('compression');
+      var _server = _app.listen(config.port);
+      var bcrypt = require('bcryptjs');
+      var tokenAuth = require('jsonwebtoken');
+      var authenticator = require('authenticator');
+      _this._socket = require('socket.io')(_server);
+      _this._socket.on('connection', function (_socket) {
+        _socket.on('force-reboot', function (token) {
+          if (!token) {
+            _this._emit('toast', 'login required');
+            return;
+          }
+          tokenAuth.verify(token, config.hashKey, function (err, decoded) {
+            if (err) {
+              _this._emit('toast', 'invalid token');
+              return;
+            }
+            if (!decoded) {
+              _this._emit('toast', 'invalid token');
+              return;
+            }
+            _this._rebootRouter('manual', decoded.username);
+          });
+        });
+        _socket.on('count', function (host) {
+          return _this._count(host).then(function (count) {
+            return _this._emit('count', count);
+          });
+        });
+        _socket.on('log', function (obj) {
+          return _this._getLogs(obj.host, obj.skip, obj.limit).then(function (log) {
+            return _this._emit('log', log);
+          });
+        });
+        _socket.on('login', function (login) {
+          _this._users.findOne({
+            username: login.username
+          }, function (err, user) {
+            if (!user) {
+              _this._emit('toast', 'login failed');
+              return;
+            }
+            if (!bcrypt.compareSync(login.password, user.password)) {
+              _this._emit('toast', 'login failed');
+              return;
+            }
+            if (user.twoFactor) {
+              _socket.emit('twoFactor');
+              return;
+            }
+            var token = tokenAuth.sign(user, _this.config.hashKey, {
+              expiresIn: '24h'
+            });
+            _socket.emit('login', token);
+            _socket.emit('toast', 'Successful Login');
+          });
+        });
+        _socket.on('twoFactor', function (twoFactor) {
+          _this._users.findOne({
+            username: twoFactor.username
+          }, function (err, user) {
+            if (!user) {
+              _this._emit('toast', 'login failed');
+              return;
+            }
+            if (!authenticator.verifyToken(user.authKey, twoFactor.code)) {
+              _this._emit('toast', 'login failed');
+              return;
+            }
+            var token = tokenAuth.sign(user, _this.config.hashKey, {
+              expiresIn: '24h'
+            });
+            _socket.emit('login', token);
+            _socket.emit('toast', 'Successful Login');
+          });
+        });
+        _this._pushRestarts();
+        _this._pushHistory();
+        // one off ping to shorten the delay for router status
+        // without could take +30 seconds to get status
+        _this._network.get_gateway_ip(function (err, ip) {
+          return _this._ping(ip).then(function (res) {
+            return _this._emit('router-status', res);
+          });
+        });
+      });
+
+      _this.PingWrapper = require("ping-wrapper");
+      _this.PingWrapper.configure();
+
+      var historySchema = _this._mongoose.Schema({
+        address: String,
+        data: Object,
+        time: Number
+      });
+
+      _this._history = _this._mongoose.model('logs', historySchema);
+
+      _this._history.insert = function (data, cb) {
+        var insert = new _this._history(data);
+        insert.save(data, cb);
+      };
+
+      var restartsSchema = _this._mongoose.Schema({
+        time: Number,
+        type: String
+      });
+
+      _this._restarts = _this._mongoose.model('restarts', restartsSchema);
+
+      _this._restarts.insert = function (data, cb) {
+        var insert = new _this._history(data);
+        insert.save(data, cb);
+      };
+
+      var usersSchema = _this._mongoose.Schema({
+        username: String,
+        password: String,
+        authKey: String,
+        twoFactor: Boolean
+      });
+
+      _this._users = _this._mongoose.model('users', usersSchema);
+
+      _app.use(_compression());
+      _app.disable('x-powered-by');
+
+      _app.use(_express.static(__dirname + '/html', {
+        maxAge: 60000 * 60 * 24
+      }));
+
+      _app.get('/count/:host', function (req, res) {
+        var host = req.params.host;
+        if (!host) {
+          res.status(500).send({
+            status: 500,
+            host: host,
+            error: 'invalid host'
+          });
           return;
         }
-        tokenAuth.verify(token, config.hashKey, function (err, decoded) {
-          if (err) {
-            _this._emit('toast', 'invalid token');
-            return;
-          }
-          if (!decoded) {
-            _this._emit('toast', 'invalid token');
-            return;
-          }
-          _this._rebootRouter('manual', decoded.username);
+        _this._count(host).then(function (count) {
+          return res.status(count.status).send(count);
         });
       });
-      _socket.on('count', function (host) {
-        return _this._count(host).then(function (count) {
-          return _this._emit('count', count);
+
+      _app.get('/log/:host/:skip/:limit', function (req, res) {
+        var host = req.params.host;
+        var skip = parseInt(req.param.skip, 10);
+        var limit = parseInt(req.param.limit, 10);
+        _this._getLogs(host, skip, limit).then(function (logs) {
+          return res.status(logs.status).send(logs);
         });
       });
-      _socket.on('log', function (obj) {
-        return _this._getLogs(obj.host, obj.skip, obj.limit).then(function (log) {
-          return _this._emit('log', log);
-        });
-      });
-      _socket.on('login', function (login) {
-        _this._users.findOne({
-          username: login.username
-        }, function (err, user) {
-          if (!user) {
-            _this._emit('toast', 'login failed');
-            return;
-          }
-          if (!bcrypt.compareSync(login.password, user.password)) {
-            _this._emit('toast', 'login failed');
-            return;
-          }
-          if (user.twoFactor) {
-            _socket.emit('twoFactor');
-            return;
-          }
-          var token = tokenAuth.sign(user, _this.config.hashKey, {
-            expiresIn: '24h'
-          });
-          _socket.emit('login', token);
-          _socket.emit('toast', 'Successful Login');
-        });
-      });
-      _socket.on('twoFactor', function (twoFactor) {
-        _this._users.findOne({
-          username: twoFactor.username
-        }, function (err, user) {
-          if (!user) {
-            _this._emit('toast', 'login failed');
-            return;
-          }
-          if (!authenticator.verifyToken(user.authKey, twoFactor.code)) {
-            _this._emit('toast', 'login failed');
-            return;
-          }
-          var token = tokenAuth.sign(user, _this.config.hashKey, {
-            expiresIn: '24h'
-          });
-          _socket.emit('login', token);
-          _socket.emit('toast', 'Successful Login');
-        });
-      });
-      _this._pushRestarts();
-      _this._pushHistory();
-      // one off ping to shorten the delay for router status
-      // without could take +30 seconds to get status
-      _this._network.get_gateway_ip(function (err, ip) {
-        return _this._ping(ip).then(function (res) {
-          return _this._emit('router-status', res);
-        });
-      });
+
+      _this._hasRebooted = false;
+      _this._failedRouterPings = 0;
+
+      _this._addresses = _this.config.addresses;
+      _this._responses = [];
+      _this.start();
     });
-
-    this.PingWrapper = require("ping-wrapper");
-    this.PingWrapper.configure();
-
-    var Data = require('nedb');
-    this._history = new Data({
-      filename: __dirname + '/data/data.db',
-      autoload: true
-    });
-    this._restarts = new Data({
-      filename: __dirname + '/data/restarts.db',
-      autoload: true
-    });
-    this._users = new Data({
-      filename: __dirname + '/data/users.db',
-      autoload: true
-    });
-
-    _app.use(_compression());
-    _app.disable('x-powered-by');
-
-    _app.use(_express.static(__dirname + '/html', {
-      maxAge: 60000 * 60 * 24
-    }));
-
-    _app.get('/count/:host', function (req, res) {
-      var host = req.params.host;
-      if (!host) {
-        res.status(500).send({
-          status: 500,
-          host: host,
-          error: 'invalid host'
-        });
-        return;
-      }
-      _this._count(host).then(function (count) {
-        return res.status(count.status).send(count);
-      });
-    });
-
-    _app.get('/log/:host/:skip/:limit', function (req, res) {
-      var host = req.params.host;
-      var skip = parseInt(req.param.skip, 10);
-      var limit = parseInt(req.param.limit, 10);
-      _this._getLogs(host, skip, limit).then(function (logs) {
-        return res.status(logs.status).send(logs);
-      });
-    });
-
-    this._hasRebooted = false;
-    this._failedRouterPings = 0;
-
-    this._addresses = this.config.addresses;
-    this._responses = [];
+    this._mongoose.connect('mongodb://' + mongooseConfig.host + ':' + mongooseConfig.port + '/' + mongooseConfig.db);
   }
 
   /**
@@ -281,6 +309,11 @@ var Rebooter = function () {
         return _this4._pushRestarts(err);
       });
     }
+  }, {
+    key: '_canSSH',
+    value: function _canSSH() {
+      return this.fs.existsSync(__dirname + '/ssh.json') && this._lastRouterPing.data.hasOwnProperty('time');
+    }
 
     /**
      * reboot the router
@@ -296,7 +329,7 @@ var Rebooter = function () {
 
       this._hasRebooted = true;
       this._emit('toast', 'rebooting router...');
-      if (this.fs.existsSync(__dirname + '/ssh.json') && this._lastRouterPing.data.hasOwnProperty('time')) {
+      if (this._canSSH()) {
         // ssh file exist and last router ping was successful
         // will attempt to reboot with ssh
 
@@ -436,9 +469,7 @@ var Rebooter = function () {
             return 0;
           }
         }();
-        _this8._history.find({}).sort({
-          time: 1
-        }).skip(skip).limit(expected).exec(function (err, logs) {
+        _this8._history.find({}).skip(skip).limit(expected).exec(function (err, logs) {
           return _this8._emit('history', logs);
         });
       });
@@ -510,8 +541,6 @@ var Rebooter = function () {
         }
         _this10._history.find({
           address: host
-        }).sort({
-          time: 1
         }).skip(skip).limit(limit).exec(function (err, logs) {
           if (err) {
             resolve({
@@ -567,7 +596,12 @@ var Rebooter = function () {
     key: '_response',
     value: function _response(data) {
       data.time = new Date().getTime();
-      this._history.insert(data);
+      this._history.insert(data, function (err) {
+        if (err) {
+          throw new Error(err);
+          return;
+        }
+      });
       this._responses.push(data);
       if (this._responses.length === this._addresses.length) this._countResults(this._responses);
     }
@@ -603,6 +637,6 @@ var Rebooter = function () {
 }();
 
 var configFile = require(__dirname + '/config.json');
-var app = new Rebooter(configFile);
-app.start();
+var mongooseConfig = require(__dirname + '/mongoose.json');
+var app = new Rebooter(configFile, mongooseConfig);
 //# sourceMappingURL=rebooter.js.map
