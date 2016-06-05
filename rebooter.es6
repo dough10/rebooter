@@ -18,13 +18,13 @@ class Rebooter {
       this._routerIP = false;
       this.fs = require('fs');
       this._network = require('network');
-      //this.onoff = require('onoff').Gpio;
+      this.onoff = require('onoff').Gpio;
       this.SSH = require('simple-ssh');
       const _express = require('express');
       const _app = _express();
       const _compression = require('compression');
       const _server = _app.listen(config.port);
-      const bcrypt = require('bcryptjs');
+      const bcrypt = require('bcrypt');
       const tokenAuth = require('jsonwebtoken');
       const authenticator = require('authenticator');
       this._socket = require('socket.io')(_server);
